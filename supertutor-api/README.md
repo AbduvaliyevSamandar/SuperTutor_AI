@@ -31,6 +31,19 @@ Open http://localhost:8000/docs
 - `POST /api/v1/stt` — multipart audio file → text
 - `POST /api/v1/tts` — text → mp3 audio
 
+## Utility scripts
+
+```powershell
+# Apply schema.sql to Supabase Postgres (via session pooler)
+$env:PGPASSWORD = "<db password>"
+python scripts/apply_schema.py
+
+# Create a confirmed test user
+$env:SUPABASE_URL = "https://<ref>.supabase.co"
+$env:SUPABASE_SERVICE_KEY = "<sb_secret_...>"
+python scripts/create_test_user.py user@example.com Pass123
+```
+
 ## Deploy
 
 Recommended free hosts (no sleep):
