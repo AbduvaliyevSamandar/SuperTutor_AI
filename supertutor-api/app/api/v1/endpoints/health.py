@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 from app.core.config import get_settings
+from app.services.llm.orchestrator import llm_status, stt_status
 
 router = APIRouter()
 
@@ -10,6 +11,7 @@ def health() -> dict:
     return {
         "status": "ok",
         "env": s.app_env,
-        "groq_configured": bool(s.groq_api_key),
         "supabase_configured": bool(s.supabase_url and s.supabase_anon_key),
+        "llm_providers": llm_status(),
+        "stt_providers": stt_status(),
     }

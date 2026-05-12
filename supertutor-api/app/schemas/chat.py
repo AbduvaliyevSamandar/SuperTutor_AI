@@ -15,6 +15,7 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     reply: str
+    provider: str | None = None
 
 
 class TTSRequest(BaseModel):

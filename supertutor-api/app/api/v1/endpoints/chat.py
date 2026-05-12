@@ -1,6 +1,9 @@
 from fastapi import APIRouter, HTTPException
 from app.schemas.chat import ChatRequest, ChatResponse
-from app.services.groq_client import chat_completion
+from app.services.llm.orchestrator import (
+    AllProvidersFailed,
+    chat_with_fallback,
+)
 from app.services.prompts import system_prompt_for
 
 router = APIRouter()
@@ -16,8 +19,8 @@ def chat(req: ChatRequest) -> ChatResponse:
     messages.extend([m.model_dump() for m in req.messages])
 
     try:
-        reply = chat_completion(messages)
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"LLM error: {e}") from e
+        reply, provider = chat_with_fallback(messages)
+    except AllProvidersFailed as e:
+        raise HTTPException(status_code=503, detail=str(e)) from e
 
-    return ChatResponse(reply=reply)
+    return ChatResponse(reply=reply, provider=provider)
