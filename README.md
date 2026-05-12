@@ -43,6 +43,15 @@ flutter run -d chrome   # yoki Android emulator
 | Backend hosting | Fly.io / Koyeb / HF Spaces | bepul tier |
 | Frontend hosting | Cloudflare Pages | cheksiz |
 
+## Deploy
+
+To'liq deploy yo'riqnomasi: [DEPLOY.md](DEPLOY.md)
+
+Qisqacha:
+- **Backend** — Fly.io (Docker) — har push'da CI orqali avto-deploy
+- **Frontend Web** — GitHub Pages — har push'da CI orqali avto-deploy
+- **Android APK** — `flutter build apk --release`, to'g'ridan-to'g'ri ulashing
+
 ## MVP scope (Sprint 1)
 
 - [x] Loyiha skeleton (Flutter + FastAPI)
@@ -50,9 +59,11 @@ flutter run -d chrome   # yoki Android emulator
 - [x] STT endpoint (Groq Whisper)
 - [x] TTS endpoint (Edge-TTS)
 - [x] Home + Chat + Dashboard sahifalar
-- [x] Oddiy avatar widget
-- [ ] Supabase auth
-- [ ] Statistika real-time saqlash
-- [ ] Mic recording UI
-- [ ] Lottie avatar
-- [ ] Deploy (Fly.io + Cloudflare Pages)
+- [x] Animatsion avatar (lip-sync)
+- [x] Mic recording + STT (mobile)
+- [x] Supabase auth (login/signup)
+- [x] Sessions tracking + real statistika
+- [x] CI/CD: Fly.io + GitHub Pages workflows
+- [ ] Rus, Nemis, Turk tillari (Sprint 2)
+- [ ] Web mikrofon yozish (Sprint 2)
+- [ ] Voice cloning (Premium, Sprint 3)
