@@ -8,6 +8,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
 
 import '../../widgets/avatar_view.dart';
+import '../auth/auth_controller.dart';
+import '../dashboard/stats_repository.dart';
 import 'chat_controller.dart';
 import 'chat_models.dart';
 import 'chat_repository.dart';
@@ -29,6 +31,48 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   bool _recording = false;
   bool _transcribing = false;
 
+  String? _sessionId;
+  DateTime? _sessionStart;
+  int _messagesCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _startSession());
+  }
+
+  Future<void> _startSession() async {
+    if (!ref.read(authControllerProvider).isAuthenticated) return;
+    try {
+      _sessionId = await ref
+          .read(statsRepositoryProvider)
+          .startSession(widget.subject);
+      _sessionStart = DateTime.now();
+    } catch (_) {
+      _sessionId = null;
+    }
+  }
+
+  Future<void> _updateSession() async {
+    if (_sessionId == null || _sessionStart == null) return;
+    final duration = DateTime.now().difference(_sessionStart!).inSeconds;
+    try {
+      await ref.read(statsRepositoryProvider).updateSession(
+            _sessionId!,
+            durationSeconds: duration,
+            messagesCount: _messagesCount,
+          );
+    } catch (_) {}
+  }
+
+  Future<void> _endSession() async {
+    if (_sessionId == null) return;
+    try {
+      await _updateSession();
+      await ref.read(statsRepositoryProvider).endSession(_sessionId!);
+    } catch (_) {}
+  }
+
   String get _subjectTitle => switch (widget.subject) {
         'math' => 'Matematika',
         'english' => 'Ingliz tili',
@@ -39,6 +83,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   void dispose() {
+    _endSession();
     _input.dispose();
     _scroll.dispose();
     _player.dispose();
@@ -52,11 +97,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _input.clear();
     final ctrl = ref.read(chatControllerProvider(widget.subject).notifier);
     await ctrl.send(text);
+    _messagesCount += 1;
     final last =
         ref.read(chatControllerProvider(widget.subject)).messages.lastOrNull;
     if (last != null && last.role == 'assistant') {
       _speak(last.content);
     }
+    _updateSession();
     _scrollToBottom();
   }
 
