@@ -1,0 +1,48 @@
+name: supertutor_app
+description: "SuperTutor AI — multilingual AI tutor with avatar chat."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.10.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # State management
+  flutter_riverpod: ^2.6.1
+
+  # Networking
+  dio: ^5.7.0
+
+  # Routing
+  go_router: ^14.6.2
+
+  # Auth + DB (Supabase)
+  supabase_flutter: ^2.8.4
+
+  # Avatar (Lottie animations)
+  lottie: ^3.3.1
+
+  # Voice
+  record: ^5.2.1
+  just_audio: ^0.9.42
+  permission_handler: ^11.3.1
+
+  # Storage
+  shared_preferences: ^2.3.3
+
+  # Env
+  flutter_dotenv: ^5.2.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - .env
