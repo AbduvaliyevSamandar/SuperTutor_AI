@@ -6,9 +6,12 @@ from app.api.v1.endpoints import (
     dictionary,
     exercises,
     health,
+    ielts,
     leaderboard,
+    pronunciation,
     quiz,
     sessions,
+    srs,
     stats,
     stt,
     tts,
@@ -29,3 +32,6 @@ api_router.include_router(quiz.router, tags=["quiz"])
 api_router.include_router(currency.router, tags=["currency"])
 api_router.include_router(leaderboard.router, tags=["leaderboard"])
 api_router.include_router(exercises.router, tags=["exercises"])
+api_router.include_router(srs.router, tags=["srs"])
+api_router.include_router(pronunciation.router, tags=["voice"])
+api_router.include_router(ielts.router, tags=["ielts"])

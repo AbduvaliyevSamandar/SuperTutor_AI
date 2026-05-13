@@ -5,9 +5,12 @@ import '../../core/theme.dart';
 import '../achievements/achievements_screen.dart';
 import '../exercises/cloze_screen.dart';
 import '../exercises/listening_screen.dart';
+import '../ielts/ielts_speaking_screen.dart';
 import '../leaderboard/leaderboard_screen.dart';
+import '../pronunciation/pronunciation_screen.dart';
 import '../quiz/quiz_screen.dart';
 import '../scenarios/scenarios.dart';
+import '../srs/srs_screen.dart';
 
 class LearnScreen extends StatelessWidget {
   const LearnScreen({super.key});
@@ -78,6 +81,42 @@ class LearnScreen extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _ExerciseTile(
+                  emoji: '🎙️',
+                  title: 'Talaffuz',
+                  subtitle: 'Aniq aytib bering',
+                  color: AppColors.fire,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                        builder: (_) => const PronunciationScreen()),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _ExerciseTile(
+                  emoji: '🔁',
+                  title: 'So\'z takrori',
+                  subtitle: 'SRS - kunlik',
+                  color: AppColors.gold,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                        builder: (_) => const SrsReviewScreen()),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _IeltsBanner(
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const IeltsSpeakingScreen()),
+            ),
           ),
 
           const SizedBox(height: 24),
@@ -160,6 +199,62 @@ class LearnScreen extends StatelessWidget {
             },
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _IeltsBanner extends StatelessWidget {
+  final VoidCallback onTap;
+  const _IeltsBanner({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(18),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF6B5BE5), Color(0xFF4A3DC6)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF4A3DC6).withValues(alpha: 0.5),
+              offset: const Offset(0, 4),
+              blurRadius: 0,
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            const Text('🎓', style: TextStyle(fontSize: 36)),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('IELTS Speaking simulyator',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16)),
+                  SizedBox(height: 2),
+                  Text('3 part · AI examiner · Band score',
+                      style: TextStyle(
+                          color: Colors.white70,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12)),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward_rounded, color: Colors.white),
+          ],
+        ),
       ),
     );
   }

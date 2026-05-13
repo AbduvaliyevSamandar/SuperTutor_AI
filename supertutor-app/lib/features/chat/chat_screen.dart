@@ -12,6 +12,7 @@ import 'package:record/record.dart';
 
 import '../../core/theme.dart';
 import '../../widgets/avatar_view.dart';
+import '../../widgets/sound_effects.dart';
 import '../auth/auth_controller.dart';
 import '../currency/currency_controller.dart';
 import '../dashboard/stats_repository.dart';
@@ -42,6 +43,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   String? _sessionId;
   DateTime? _sessionStart;
   int _messagesCount = 0;
+  bool _lessonCompletedShown = false;
+  static const int _messagesPerLesson = 5;
 
   bool get _supportsVision => widget.subject == 'math';
 
@@ -156,6 +159,72 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
     _updateSession();
     _scrollToBottom();
+    if (!_lessonCompletedShown &&
+        _messagesCount >= _messagesPerLesson) {
+      _lessonCompletedShown = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showLessonCompleted();
+      });
+    }
+  }
+
+  Future<void> _showLessonCompleted() async {
+    SoundEffects.correct();
+    int bonus = 10;
+    if (ref.read(authControllerProvider).isAuthenticated) {
+      try {
+        await ref
+            .read(currencyControllerProvider.notifier)
+            .awardXp(bonus, reason: 'lesson_complete');
+      } catch (_) {}
+    }
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('🎉', style: TextStyle(fontSize: 56)),
+              const SizedBox(height: 8),
+              Text('Dars tugadi!',
+                  style: Theme.of(ctx).textTheme.headlineMedium),
+              const SizedBox(height: 6),
+              Text(
+                'Sizga +$bonus XP. Keyingi dars qulflanmadi 🔓',
+                style: const TextStyle(
+                    color: AppColors.inkLight,
+                    fontWeight: FontWeight.w600),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('Davom etish'),
+                ),
+              ),
+              const SizedBox(height: 6),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: () {
+                    Navigator.of(ctx).pop();
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('Bosh ekran'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _speak(String text) async {
