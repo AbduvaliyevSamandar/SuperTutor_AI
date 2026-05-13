@@ -13,6 +13,7 @@ from app.api.v1.endpoints import (
     sessions,
     srs,
     stats,
+    stories,
     stt,
     tts,
     vision,
@@ -35,3 +36,4 @@ api_router.include_router(exercises.router, tags=["exercises"])
 api_router.include_router(srs.router, tags=["srs"])
 api_router.include_router(pronunciation.router, tags=["voice"])
 api_router.include_router(ielts.router, tags=["ielts"])
+api_router.include_router(stories.router, tags=["stories"])

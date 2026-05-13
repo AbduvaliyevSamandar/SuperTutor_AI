@@ -5,12 +5,14 @@ import '../../core/theme.dart';
 import '../achievements/achievements_screen.dart';
 import '../exercises/cloze_screen.dart';
 import '../exercises/listening_screen.dart';
+import '../grammar/grammar_screen.dart';
 import '../ielts/ielts_speaking_screen.dart';
 import '../leaderboard/leaderboard_screen.dart';
 import '../pronunciation/pronunciation_screen.dart';
 import '../quiz/quiz_screen.dart';
 import '../scenarios/scenarios.dart';
 import '../srs/srs_screen.dart';
+import '../stories/stories_screen.dart';
 
 class LearnScreen extends StatelessWidget {
   const LearnScreen({super.key});
@@ -107,6 +109,35 @@ class LearnScreen extends StatelessWidget {
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(
                         builder: (_) => const SrsReviewScreen()),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _ExerciseTile(
+                  emoji: '📖',
+                  title: 'Hikoyalar',
+                  subtitle: 'O\'qib tushunish',
+                  color: AppColors.heart,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const StoriesScreen()),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _ExerciseTile(
+                  emoji: '📐',
+                  title: 'Grammatika',
+                  subtitle: '8 mavzu',
+                  color: AppColors.secondary,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                        builder: (_) => const GrammarListScreen()),
                   ),
                 ),
               ),
