@@ -137,6 +137,12 @@ class ProfileScreen extends ConsumerWidget {
             label: 'Interfeys tili',
             trailing: _LangPicker(),
           ),
+          _SettingsTile(
+            icon: Icons.dark_mode_outlined,
+            color: AppColors.ink,
+            label: 'Tungi rejim',
+            trailing: _DarkSwitch(),
+          ),
 
           const SizedBox(height: 16),
           _SectionHeader('Yordam'),
@@ -442,6 +448,19 @@ class _LangPicker extends ConsumerWidget {
           ref.read(settingsControllerProvider.notifier).setLanguage(v);
         }
       },
+    );
+  }
+}
+
+class _DarkSwitch extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(settingsControllerProvider);
+    return Switch(
+      activeThumbColor: AppColors.primary,
+      value: s.darkMode,
+      onChanged: (v) =>
+          ref.read(settingsControllerProvider.notifier).setDarkMode(v),
     );
   }
 }

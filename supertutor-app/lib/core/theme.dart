@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Duolingo-inspired palette.
+/// Duolingo-inspired palette (light).
 class AppColors {
   static const primary = Color(0xFF58CC02);
   static const primaryDark = Color(0xFF58A700);
@@ -23,65 +23,89 @@ class AppColors {
   static const borderDark = Color(0xFFD0D0D0);
 }
 
-ThemeData buildTheme() {
-  const scheme = ColorScheme(
-    brightness: Brightness.light,
+/// Dark-mode palette — same brand colors, dark surfaces.
+class AppColorsDark {
+  static const bg = Color(0xFF121212);
+  static const surface = Color(0xFF1E1E1E);
+  static const surface2 = Color(0xFF2A2A2A);
+  static const border = Color(0xFF333333);
+  static const borderDark = Color(0xFF444444);
+
+  static const ink = Color(0xFFE6E6E6);
+  static const inkLight = Color(0xFFAAAAAA);
+  static const inkLighter = Color(0xFF777777);
+}
+
+ThemeData buildTheme() => _buildTheme(dark: false);
+ThemeData buildDarkTheme() => _buildTheme(dark: true);
+
+ThemeData _buildTheme({required bool dark}) {
+  final bg = dark ? AppColorsDark.bg : AppColors.bg;
+  final surface = dark ? AppColorsDark.surface : AppColors.surface;
+  final border = dark ? AppColorsDark.border : AppColors.border;
+  final ink = dark ? AppColorsDark.ink : AppColors.ink;
+  final inkLight = dark ? AppColorsDark.inkLight : AppColors.inkLight;
+  final inkLighter = dark ? AppColorsDark.inkLighter : AppColors.inkLighter;
+
+  final scheme = ColorScheme(
+    brightness: dark ? Brightness.dark : Brightness.light,
     primary: AppColors.primary,
     onPrimary: Colors.white,
     secondary: AppColors.secondary,
     onSecondary: Colors.white,
     error: AppColors.heart,
     onError: Colors.white,
-    surface: AppColors.bg,
-    onSurface: AppColors.ink,
-    surfaceContainerLowest: AppColors.bg,
-    surfaceContainerLow: AppColors.surface,
-    surfaceContainerHighest: AppColors.surface,
-    outline: AppColors.border,
-    outlineVariant: AppColors.borderDark,
+    surface: bg,
+    onSurface: ink,
+    surfaceContainerLowest: bg,
+    surfaceContainerLow: surface,
+    surfaceContainerHighest: surface,
+    outline: border,
+    outlineVariant: dark ? AppColorsDark.borderDark : AppColors.borderDark,
   );
 
-  const textTheme = TextTheme(
-    displayLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: AppColors.ink, height: 1.1),
-    headlineLarge: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: AppColors.ink),
-    headlineMedium: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.ink),
-    titleLarge: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.ink),
-    titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.ink),
-    bodyLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.ink),
-    bodyMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.inkLight),
-    labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, letterSpacing: 0.5),
+  final textTheme = TextTheme(
+    displayLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: ink, height: 1.1),
+    headlineLarge: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: ink),
+    headlineMedium: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: ink),
+    titleLarge: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: ink),
+    titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: ink),
+    bodyLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: ink),
+    bodyMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: inkLight),
+    labelLarge: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, letterSpacing: 0.5),
   );
 
   return ThemeData(
     useMaterial3: true,
+    brightness: dark ? Brightness.dark : Brightness.light,
     colorScheme: scheme,
-    scaffoldBackgroundColor: AppColors.bg,
+    scaffoldBackgroundColor: bg,
     textTheme: textTheme,
     splashFactory: InkRipple.splashFactory,
-    appBarTheme: const AppBarTheme(
-      backgroundColor: AppColors.bg,
-      foregroundColor: AppColors.ink,
+    appBarTheme: AppBarTheme(
+      backgroundColor: bg,
+      foregroundColor: ink,
       elevation: 0,
       centerTitle: false,
-      surfaceTintColor: AppColors.bg,
+      surfaceTintColor: bg,
       titleTextStyle: TextStyle(
         fontSize: 20,
         fontWeight: FontWeight.w800,
-        color: AppColors.ink,
+        color: ink,
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: AppColors.surface,
+      fillColor: surface,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      hintStyle: const TextStyle(color: AppColors.inkLighter, fontWeight: FontWeight.w500),
+      hintStyle: TextStyle(color: inkLighter, fontWeight: FontWeight.w500),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: AppColors.border, width: 2),
+        borderSide: BorderSide(color: border, width: 2),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: AppColors.border, width: 2),
+        borderSide: BorderSide(color: border, width: 2),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
@@ -89,8 +113,8 @@ ThemeData buildTheme() {
       ),
     ),
     snackBarTheme: SnackBarThemeData(
-      backgroundColor: AppColors.ink,
-      contentTextStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+      backgroundColor: ink,
+      contentTextStyle: TextStyle(color: bg, fontWeight: FontWeight.w600),
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ),

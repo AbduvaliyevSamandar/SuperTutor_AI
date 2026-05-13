@@ -20,6 +20,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/chat/:subject',
         builder: (_, state) => ChatScreen(
           subject: state.pathParameters['subject'] ?? 'english',
+          seedMessage: state.uri.queryParameters['seed'],
         ),
       ),
     ],

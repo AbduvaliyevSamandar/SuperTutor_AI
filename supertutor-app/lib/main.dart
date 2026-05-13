@@ -8,6 +8,7 @@ import 'core/config.dart';
 import 'core/router.dart';
 import 'core/theme.dart';
 import 'features/onboarding/onboarding_screen.dart';
+import 'features/profile/settings_storage.dart';
 
 Future<void> main() async {
   final binding = WidgetsFlutterBinding.ensureInitialized();
@@ -35,14 +36,16 @@ class SuperTutorApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
+    final settings = ref.watch(settingsControllerProvider);
     if (!onboarded) {
-      // Override initial path to /onboarding on first launch.
       router.go('/onboarding');
     }
     return MaterialApp.router(
       title: 'SuperTutor AI',
       debugShowCheckedModeBanner: false,
       theme: buildTheme(),
+      darkTheme: buildDarkTheme(),
+      themeMode: settings.darkMode ? ThemeMode.dark : ThemeMode.light,
       routerConfig: router,
     );
   }

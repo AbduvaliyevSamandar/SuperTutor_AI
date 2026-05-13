@@ -4,7 +4,9 @@ from app.api.v1.endpoints import (
     chat,
     currency,
     dictionary,
+    exercises,
     health,
+    leaderboard,
     quiz,
     sessions,
     stats,
@@ -25,3 +27,5 @@ api_router.include_router(stats.router, tags=["stats"])
 api_router.include_router(dictionary.router, tags=["dictionary"])
 api_router.include_router(quiz.router, tags=["quiz"])
 api_router.include_router(currency.router, tags=["currency"])
+api_router.include_router(leaderboard.router, tags=["leaderboard"])
+api_router.include_router(exercises.router, tags=["exercises"])
