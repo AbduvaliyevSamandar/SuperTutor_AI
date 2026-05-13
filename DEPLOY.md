@@ -1,102 +1,103 @@
 # Deploy yo'riqnomasi
 
-Loyiha 2 ta servis sifatida deploy qilinadi (ikkalasi ham bepul):
+Loyiha 2 servisli bo'lib deploy qilinadi (ikkalasi ham bepul):
 
-| Komponent | Servis | URL |
+| Komponent | Servis | Texnologiya |
 |---|---|---|
-| Backend (FastAPI) | Fly.io | `https://supertutor-api.fly.dev` |
-| Frontend (Flutter Web) | GitHub Pages | `https://abduvaliyevsamandar.github.io/SuperTutor_AI/` |
+| Backend (FastAPI) | Render Web Service | Docker |
+| Frontend (Flutter Web) | Render Static Site | Static |
 
 ---
 
-## 1. Supabase loyihasini yaratish
+## ⚡ Eng tez yo'l: Render Blueprint (avtomatik)
 
-1. https://supabase.com → **New project** (Free tier, hech qanday CC kerak emas)
-2. Project paydo bo'lgach: **Settings → API** ga o'ting va quyidagilarni nusxa oling:
-   - `Project URL` (e.g., `https://xxx.supabase.co`) → `SUPABASE_URL`
-   - `anon public` key → `SUPABASE_ANON_KEY`
-   - `service_role secret` key → `SUPABASE_SERVICE_KEY` ⚠️ **maxfiy**, hech qachon Flutter ilovaga qo'shmang
-3. **SQL Editor → New query** → `supertutor-api/supabase/schema.sql` faylini ko'chirib qo'ying va RUN bosing.
+`render.yaml` repoda — bitta klik bilan ikkala servisni ham deploy qiladi.
 
-## 2. Groq API kalitini olish
+### 1. Render hisob ochish
+1. https://render.com → **Sign up with GitHub** (bepul, kartochka kerakmas)
+2. Email tasdiqlangach, dashboard ochiladi.
 
-1. https://console.groq.com → Sign up (Google bilan tez)
-2. **API Keys → Create API Key** → kalitni nusxa oling
+### 2. Blueprint orqali deploy
+1. Render Dashboard → **New** → **Blueprint**
+2. **Connect GitHub** → `SuperTutor_AI` repo'sini tanlang
+3. Render `render.yaml`'ni o'qiydi va 2 ta servis ko'rsatadi:
+   - `supertutor-api` (Web Service, Docker)
+   - `supertutor-web` (Static Site, Flutter)
+4. **Apply** bosing
+
+### 3. Maxfiy kalitlarni qo'shing
+Har bir servis uchun **Environment** sahifasidan kalitlarni kiriting:
+
+**supertutor-api** uchun:
+```
+GROQ_API_KEY=gsk_...
+SUPABASE_URL=https://amtbevwkxtkzhnpiqcgi.supabase.co
+SUPABASE_ANON_KEY=sb_publishable_...
+SUPABASE_SERVICE_KEY=sb_secret_...
+OPENAI_API_KEY=        (ixtiyoriy)
+GEMINI_API_KEY=        (ixtiyoriy)
+```
+
+**supertutor-web** uchun:
+```
+SUPABASE_URL=https://amtbevwkxtkzhnpiqcgi.supabase.co
+SUPABASE_ANON_KEY=sb_publishable_...
+```
+*`API_BASE_URL` avtomatik o'rnatiladi — `supertutor-api` host'idan.*
+
+### 4. Manual Deploy
+Har bir servis sahifasida **"Manual Deploy" → "Deploy latest commit"** bosing.
+
+Tugagach:
+- Backend: `https://supertutor-api.onrender.com/api/v1/health`
+- Frontend: `https://supertutor-web.onrender.com`
 
 ---
 
-## 3. Backend: Fly.io'ga deploy
+## ⚠️ Render free tier muhim eslatmalar
 
+- **Sleep**: 15 daqiqa faolsizdan keyin uxlab qoladi. Birinchi so'rov ~30 soniya cold start. (Frontend static — uxlamay-di)
+- **Build vaqti**: birinchi build ~7-10 daqiqa (Flutter SDK yuklab oladi)
+- **750 soat/oy**: bir nechta servis bo'lsa, taqsimlanadi
+- **Disk yo'q**: davomli ma'lumotlar Supabase'da saqlanadi
+
+Cold start muammosi bo'lsa, **UptimeRobot** (bepul) bilan har 10 daqiqada `/health` so'rov yuborib turib bo'ladi.
+
+---
+
+## Muqobil: Fly.io + GitHub Pages
+
+`fly.toml` va `.github/workflows/` ham repoda — `render.yaml` ishlatmasangiz ham bularni ishlatishingiz mumkin. Batafsil — quyidagi bo'limga qarang.
+
+<details>
+<summary><b>Fly.io + GitHub Pages (eski yo'l)</b></summary>
+
+### Backend → Fly.io
 ```powershell
-# 1. flyctl o'rnatish (Windows)
 iwr https://fly.io/install.ps1 -useb | iex
-
-# 2. Ro'yxatdan o'tish (bank kartasi so'raydi lekin pul yechmaydi — limit nazorat uchun)
 fly auth signup
-
-# 3. App yaratish
 cd supertutor-api
 fly launch --no-deploy --name supertutor-api --region fra --copy-config
-
-# 4. Sirlarni o'rnatish
-fly secrets set `
-  GROQ_API_KEY=gsk_... `
-  SUPABASE_URL=https://xxx.supabase.co `
-  SUPABASE_ANON_KEY=eyJ... `
-  SUPABASE_SERVICE_KEY=eyJ...
-
-# 5. Deploy
+fly secrets set GROQ_API_KEY=... SUPABASE_URL=... SUPABASE_ANON_KEY=... SUPABASE_SERVICE_KEY=...
 fly deploy
 ```
 
-Tekshirish: `https://supertutor-api.fly.dev/docs` ochilishi kerak.
-
-### CI/CD orqali avtomatik deploy
-
-`.github/workflows/deploy-api.yml` faylimiz har push'da Fly.io'ga deploy qiladi.
-Buning uchun:
-1. `fly auth token` → tokenni nusxa oling
-2. GitHub repo → **Settings → Secrets → Actions → New repository secret**:
-   - Name: `FLY_API_TOKEN`
-   - Value: yuqoridagi token
+### Frontend → GitHub Pages
+1. Repo Settings → Pages → Source = GitHub Actions
+2. Secrets qo'shing: `API_BASE_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`
+3. Push qiling — `.github/workflows/deploy-web.yml` avtomatik build qiladi
+</details>
 
 ---
 
-## 4. Frontend: GitHub Pages'ga deploy
-
-`.github/workflows/deploy-web.yml` har push'da Flutter web build qiladi va Pages'ga deploy qiladi.
-
-GitHub repo'da:
-1. **Settings → Pages → Source** = **GitHub Actions**
-2. **Settings → Secrets → Actions** → 3 ta secret qo'shing:
-   - `API_BASE_URL` = `https://supertutor-api.fly.dev`
-   - `SUPABASE_URL` = `https://xxx.supabase.co`
-   - `SUPABASE_ANON_KEY` = `eyJ...`
-3. `main` branch'ga push qiling → Actions sahifasida deploy ko'rinadi.
-
-URL: `https://abduvaliyevsamandar.github.io/SuperTutor_AI/`
-
----
-
-## 5. Android APK build (Play Store'siz tarqatish)
+## Android APK (Play Store'siz)
 
 ```powershell
 cd supertutor-app
-# .env ichida API_BASE_URL=https://supertutor-api.fly.dev bo'lsin
+# .env'da API_BASE_URL=https://supertutor-api.onrender.com bo'lsin
 flutter build apk --release
 ```
 
-APK manzili: `supertutor-app/build/app/outputs/flutter-apk/app-release.apk`
+APK: `supertutor-app/build/app/outputs/flutter-apk/app-release.apk`
 
-Bu faylni Telegram/Drive'ga qo'yib ulashishingiz mumkin — bepul, Play Store fee'siz.
-
----
-
-## Tekshiruv ro'yxati (deploy oldidan)
-
-- [ ] Supabase loyiha yaratildi, `schema.sql` ishladi
-- [ ] Groq kaliti olindi
-- [ ] Fly.io account + flyctl o'rnatildi
-- [ ] GitHub repo Secrets'iga `FLY_API_TOKEN`, `API_BASE_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY` qo'shildi
-- [ ] GitHub Pages "Source: GitHub Actions"'ga sozlandi
-- [ ] `main`'ga push qilinib, ikki workflow ham yashil bo'ldi
+Telegram/Drive orqali ulashing — Play Store fee'siz.
