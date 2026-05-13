@@ -7,6 +7,7 @@ import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
 
+import '../../core/theme.dart';
 import '../../widgets/avatar_view.dart';
 import '../auth/auth_controller.dart';
 import '../dashboard/stats_repository.dart';
@@ -79,6 +80,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         _ => widget.subject,
       };
 
+  String get _subjectEmoji => switch (widget.subject) {
+        'math' => '📐',
+        'english' => '🇬🇧',
+        _ => '🎓',
+      };
+
+  Color get _subjectColor => switch (widget.subject) {
+        'math' => AppColors.fire,
+        'english' => AppColors.secondary,
+        _ => AppColors.primary,
+      };
+
   String get _voiceLang => widget.subject == 'math' ? 'uz' : 'en';
 
   @override
@@ -126,7 +139,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   Future<void> _toggleRecord() async {
     if (kIsWeb) {
-      _showMessage('Ovozli yozish hozircha faqat mobile ilovada ishlaydi.');
+      _showMessage('Ovozli yozish hozircha faqat mobile ilovada.');
       return;
     }
     if (_recording) {
@@ -195,58 +208,104 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final busy = state.sending || _transcribing;
 
     return Scaffold(
-      appBar: AppBar(title: Text(_subjectTitle)),
+      appBar: AppBar(
+        title: Row(
+          children: [
+            Text(_subjectEmoji, style: const TextStyle(fontSize: 24)),
+            const SizedBox(width: 8),
+            Text(_subjectTitle),
+          ],
+        ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: _subjectColor.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.bolt_rounded, color: _subjectColor, size: 16),
+                  const SizedBox(width: 4),
+                  Text('$_messagesCount XP',
+                      style: TextStyle(
+                          color: _subjectColor,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13)),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
       body: Column(
         children: [
           AvatarView(speaking: _speaking),
           if (state.error != null)
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(8),
-              color: Colors.red.withValues(alpha: 0.1),
+              padding: const EdgeInsets.all(10),
+              color: AppColors.heart.withValues(alpha: 0.1),
               child: Text(state.error!,
-                  style: const TextStyle(color: Colors.red)),
+                  style: const TextStyle(
+                      color: AppColors.heartDark,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13)),
             ),
           Expanded(
-            child: ListView.builder(
-              controller: _scroll,
-              padding: const EdgeInsets.all(12),
-              itemCount: state.messages.length,
-              itemBuilder: (context, i) => _Bubble(message: state.messages[i]),
-            ),
+            child: state.messages.isEmpty
+                ? _EmptyChat(subject: widget.subject, accent: _subjectColor)
+                : ListView.builder(
+                    controller: _scroll,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    itemCount: state.messages.length + (state.sending ? 1 : 0),
+                    itemBuilder: (context, i) {
+                      if (i >= state.messages.length) {
+                        return _TypingBubble(accent: _subjectColor);
+                      }
+                      return _Bubble(
+                          message: state.messages[i], accent: _subjectColor);
+                    },
+                  ),
           ),
-          if (busy) const LinearProgressIndicator(minHeight: 2),
           SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(8),
+            top: false,
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: const BoxDecoration(
+                color: AppColors.bg,
+                border: Border(
+                    top: BorderSide(color: AppColors.border, width: 1.5)),
+              ),
               child: Row(
                 children: [
-                  IconButton.filled(
-                    onPressed: busy ? null : _toggleRecord,
-                    icon: Icon(_recording ? Icons.stop : Icons.mic),
-                    style: IconButton.styleFrom(
-                      backgroundColor:
-                          _recording ? Colors.red : null,
-                    ),
+                  _MicButton(
+                    recording: _recording,
+                    onTap: busy && !_recording ? null : _toggleRecord,
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: TextField(
                       controller: _input,
                       onSubmitted: (_) => _onSend(),
+                      style: const TextStyle(fontWeight: FontWeight.w600),
                       decoration: InputDecoration(
-                        hintText:
-                            _recording ? 'Yozilmoqda...' : 'Yozing yoki mikrofondan gapiring...',
-                        border: const OutlineInputBorder(),
+                        hintText: _recording
+                            ? 'Yozilmoqda...'
+                            : 'Xabar yozing...',
                         contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 10),
+                            horizontal: 14, vertical: 12),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 6),
-                  IconButton.filled(
-                    onPressed: busy ? null : _onSend,
-                    icon: const Icon(Icons.send),
+                  const SizedBox(width: 8),
+                  _SendButton(
+                    enabled: !busy,
+                    onTap: busy ? null : _onSend,
                   ),
                 ],
               ),
@@ -260,26 +319,238 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
 class _Bubble extends StatelessWidget {
   final ChatMessage message;
-  const _Bubble({required this.message});
+  final Color accent;
+  const _Bubble({required this.message, required this.accent});
 
   @override
   Widget build(BuildContext context) {
     final isUser = message.role == 'user';
-    final scheme = Theme.of(context).colorScheme;
-    return Align(
-      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        constraints: BoxConstraints(
-            maxWidth: MediaQuery.of(context).size.width * 0.78),
-        decoration: BoxDecoration(
-          color: isUser
-              ? scheme.primaryContainer
-              : scheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(14),
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment:
+            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        children: [
+          if (!isUser) ...[
+            Container(
+              width: 32,
+              height: 32,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Text('🦉', style: TextStyle(fontSize: 18)),
+            ),
+            const SizedBox(width: 8),
+          ],
+          Flexible(
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              constraints: BoxConstraints(
+                  maxWidth: MediaQuery.of(context).size.width * 0.72),
+              decoration: BoxDecoration(
+                color: isUser ? accent : AppColors.surface,
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(16),
+                  topRight: const Radius.circular(16),
+                  bottomLeft: Radius.circular(isUser ? 16 : 4),
+                  bottomRight: Radius.circular(isUser ? 4 : 16),
+                ),
+                border: isUser
+                    ? null
+                    : Border.all(color: AppColors.border, width: 1.5),
+              ),
+              child: Text(
+                message.content,
+                style: TextStyle(
+                  color: isUser ? Colors.white : AppColors.ink,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 15,
+                  height: 1.35,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TypingBubble extends StatefulWidget {
+  final Color accent;
+  const _TypingBubble({required this.accent});
+
+  @override
+  State<_TypingBubble> createState() => _TypingBubbleState();
+}
+
+class _TypingBubbleState extends State<_TypingBubble>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c =
+      AnimationController(vsync: this, duration: const Duration(seconds: 1))
+        ..repeat();
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 32,
+          height: 32,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: widget.accent.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: const Text('🦉', style: TextStyle(fontSize: 18)),
         ),
-        child: Text(message.content),
+        const SizedBox(width: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(16),
+              topRight: Radius.circular(16),
+              bottomRight: Radius.circular(16),
+              bottomLeft: Radius.circular(4),
+            ),
+            border: Border.all(color: AppColors.border, width: 1.5),
+          ),
+          child: AnimatedBuilder(
+            animation: _c,
+            builder: (_, __) {
+              int dots = ((_c.value * 4).floor() % 4);
+              return Text(
+                '·' * (dots == 0 ? 1 : dots),
+                style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
+                    height: 0.5,
+                    color: AppColors.inkLight),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _EmptyChat extends StatelessWidget {
+  final String subject;
+  final Color accent;
+  const _EmptyChat({required this.subject, required this.accent});
+
+  @override
+  Widget build(BuildContext context) {
+    final hint = subject == 'math'
+        ? 'Masala yozing yoki mikrofon orqali aytib bering'
+        : 'Hi! / How are you? deb yozing yoki gapiring';
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: const Text('💬', style: TextStyle(fontSize: 40)),
+            ),
+            const SizedBox(height: 16),
+            Text('Suhbatni boshlang',
+                style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 6),
+            Text(hint,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    color: AppColors.inkLight, fontWeight: FontWeight.w600)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MicButton extends StatelessWidget {
+  final bool recording;
+  final VoidCallback? onTap;
+  const _MicButton({required this.recording, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = recording ? AppColors.heart : AppColors.secondary;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          color: onTap == null ? AppColors.inkLighter : color,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: (onTap == null
+                      ? AppColors.inkLighter
+                      : (recording
+                          ? AppColors.heartDark
+                          : AppColors.secondaryDark))
+                  .withValues(alpha: 0.85),
+              offset: const Offset(0, 3),
+              blurRadius: 0,
+            ),
+          ],
+        ),
+        child: Icon(
+          recording ? Icons.stop_rounded : Icons.mic_rounded,
+          color: Colors.white,
+          size: 22,
+        ),
+      ),
+    );
+  }
+}
+
+class _SendButton extends StatelessWidget {
+  final bool enabled;
+  final VoidCallback? onTap;
+  const _SendButton({required this.enabled, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          color: enabled ? AppColors.primary : AppColors.inkLighter,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: enabled
+                  ? AppColors.primaryDark
+                  : AppColors.inkLighter.withValues(alpha: 0.8),
+              offset: const Offset(0, 3),
+              blurRadius: 0,
+            ),
+          ],
+        ),
+        child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
       ),
     );
   }
