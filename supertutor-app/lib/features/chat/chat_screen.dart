@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -153,39 +154,60 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Future<void> _toggleRecord() async {
-    if (kIsWeb) {
-      _showMessage('Ovozli yozish hozircha faqat mobile ilovada.');
-      return;
-    }
     if (_recording) {
-      final path = await _recorder.stop();
+      final result = await _recorder.stop();
       setState(() => _recording = false);
-      if (path != null) await _sendAudio(path);
+      if (result != null) await _sendAudio(result);
       return;
     }
     if (!await _recorder.hasPermission()) {
       _showMessage('Mikrofon ruxsati berilmadi.');
       return;
     }
-    final dir = await getTemporaryDirectory();
-    final filePath =
-        '${dir.path}/rec_${DateTime.now().millisecondsSinceEpoch}.m4a';
-    await _recorder.start(
-      const RecordConfig(encoder: AudioEncoder.aacLc, sampleRate: 16000),
-      path: filePath,
-    );
+    if (kIsWeb) {
+      // Web: MediaRecorder writes to a blob URL, no path needed.
+      await _recorder.start(
+        const RecordConfig(encoder: AudioEncoder.opus, sampleRate: 16000),
+        path: '',
+      );
+    } else {
+      final dir = await getTemporaryDirectory();
+      final filePath =
+          '${dir.path}/rec_${DateTime.now().millisecondsSinceEpoch}.m4a';
+      await _recorder.start(
+        const RecordConfig(encoder: AudioEncoder.aacLc, sampleRate: 16000),
+        path: filePath,
+      );
+    }
     setState(() => _recording = true);
   }
 
-  Future<void> _sendAudio(String path) async {
+  Future<List<int>> _readRecording(String pathOrUrl) async {
+    if (kIsWeb || pathOrUrl.startsWith('blob:') || pathOrUrl.startsWith('http')) {
+      final dio = Dio();
+      final r = await dio.get<List<int>>(
+        pathOrUrl,
+        options: Options(responseType: ResponseType.bytes),
+      );
+      return r.data ?? const [];
+    }
+    return File(pathOrUrl).readAsBytes();
+  }
+
+  Future<void> _sendAudio(String pathOrUrl) async {
     setState(() => _transcribing = true);
     try {
-      final bytes = await File(path).readAsBytes();
+      final bytes = await _readRecording(pathOrUrl);
+      if (bytes.isEmpty) {
+        _showMessage('Ovoz yozib olinmadi.');
+        return;
+      }
       final repo = ref.read(chatRepositoryProvider);
+      final filename = kIsWeb ? 'audio.webm' : 'audio.m4a';
       final text = await repo.transcribe(
-        bytes.toList(),
+        bytes,
         language: _voiceLang == 'uz' ? null : _voiceLang,
-        filename: 'audio.m4a',
+        filename: filename,
       );
       if (text.trim().isEmpty) {
         _showMessage('Ovoz tushunarli emas, qaytadan urinib ko\'ring.');
