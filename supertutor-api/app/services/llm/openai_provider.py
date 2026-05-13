@@ -1,6 +1,16 @@
-from openai import OpenAI
 from app.core.config import get_settings
 from app.services.llm.base import LLMProvider, STTProvider
+
+
+def _make_client(api_key: str):
+    if not api_key:
+        return None
+    try:
+        from openai import OpenAI
+
+        return OpenAI(api_key=api_key)
+    except Exception:
+        return None
 
 
 class OpenAILLM(LLMProvider):
@@ -8,9 +18,8 @@ class OpenAILLM(LLMProvider):
 
     def __init__(self) -> None:
         s = get_settings()
-        self._key = s.openai_api_key
         self._model = s.openai_llm_model
-        self._client = OpenAI(api_key=self._key) if self._key else None
+        self._client = _make_client(s.openai_api_key)
 
     def is_configured(self) -> bool:
         return self._client is not None
@@ -31,9 +40,8 @@ class OpenAISTT(STTProvider):
 
     def __init__(self) -> None:
         s = get_settings()
-        self._key = s.openai_api_key
         self._model = s.openai_stt_model
-        self._client = OpenAI(api_key=self._key) if self._key else None
+        self._client = _make_client(s.openai_api_key)
 
     def is_configured(self) -> bool:
         return self._client is not None

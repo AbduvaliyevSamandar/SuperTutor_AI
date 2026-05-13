@@ -429,7 +429,7 @@ class _TypingBubbleState extends State<_TypingBubble>
           ),
           child: AnimatedBuilder(
             animation: _c,
-            builder: (_, __) {
+            builder: (_, _) {
               int dots = ((_c.value * 4).floor() % 4);
               return Text(
                 '·' * (dots == 0 ? 1 : dots),
