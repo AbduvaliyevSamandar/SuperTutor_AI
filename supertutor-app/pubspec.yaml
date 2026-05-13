@@ -32,6 +32,10 @@ dependencies:
   permission_handler: ^11.3.1
   path_provider: ^2.1.5
 
+  # Image + markdown rendering
+  image_picker: ^1.1.2
+  flutter_markdown: ^0.7.5
+
   # Storage
   shared_preferences: ^2.3.3
 

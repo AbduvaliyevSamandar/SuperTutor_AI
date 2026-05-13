@@ -1,5 +1,16 @@
 from app.core.config import get_settings
-from app.services.llm.base import LLMProvider
+from app.services.llm.base import LLMProvider, VisionProvider
+
+
+def _make_client(api_key: str):
+    if not api_key:
+        return None
+    try:
+        from google import genai
+
+        return genai.Client(api_key=api_key)
+    except Exception:
+        return None
 
 
 class GeminiLLM(LLMProvider):
@@ -7,16 +18,8 @@ class GeminiLLM(LLMProvider):
 
     def __init__(self) -> None:
         s = get_settings()
-        self._key = s.gemini_api_key
         self._model = s.gemini_model
-        self._client = None
-        if self._key:
-            try:
-                from google import genai
-
-                self._client = genai.Client(api_key=self._key)
-            except Exception:
-                self._client = None
+        self._client = _make_client(s.gemini_api_key)
 
     def is_configured(self) -> bool:
         return self._client is not None
@@ -37,7 +40,44 @@ class GeminiLLM(LLMProvider):
 
         config = types.GenerateContentConfig(
             temperature=0.6,
-            max_output_tokens=400,
+            max_output_tokens=600,
+            system_instruction=system,
+        )
+        r = self._client.models.generate_content(
+            model=self._model, contents=contents, config=config
+        )
+        return r.text or ""
+
+
+class GeminiVision(VisionProvider):
+    name = "gemini"
+
+    def __init__(self) -> None:
+        s = get_settings()
+        self._model = s.gemini_vision_model
+        self._client = _make_client(s.gemini_api_key)
+
+    def is_configured(self) -> bool:
+        return self._client is not None
+
+    def analyze(
+        self,
+        prompt: str,
+        image: bytes,
+        mime: str = "image/jpeg",
+        system: str | None = None,
+    ) -> str:
+        assert self._client
+        from google.genai import types
+
+        parts = [
+            types.Part.from_text(text=prompt),
+            types.Part.from_bytes(data=image, mime_type=mime),
+        ]
+        contents = [types.Content(role="user", parts=parts)]
+        config = types.GenerateContentConfig(
+            temperature=0.4,
+            max_output_tokens=1200,
             system_instruction=system,
         )
         r = self._client.models.generate_content(

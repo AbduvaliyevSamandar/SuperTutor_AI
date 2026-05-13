@@ -49,6 +49,17 @@ class ChatController extends StateNotifier<ChatState> {
       state = state.copyWith(sending: false, error: e.toString());
     }
   }
+
+  void appendUserMessage(ChatMessage msg) {
+    state = state.copyWith(messages: [...state.messages, msg]);
+  }
+
+  void appendAssistantMessage(String text) {
+    state = state.copyWith(messages: [
+      ...state.messages,
+      ChatMessage(role: 'assistant', content: text),
+    ]);
+  }
 }
 
 final chatControllerProvider = StateNotifierProvider.family<ChatController,

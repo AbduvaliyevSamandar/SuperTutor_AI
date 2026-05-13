@@ -34,6 +34,26 @@ class ChatRepository {
     return response.data['text'] as String;
   }
 
+  Future<String> analyzeImage({
+    required List<int> imageBytes,
+    required String subject,
+    String? prompt,
+    String filename = 'photo.jpg',
+    String mime = 'image/jpeg',
+  }) async {
+    final form = FormData.fromMap({
+      'file': MultipartFile.fromBytes(
+        imageBytes,
+        filename: filename,
+        contentType: DioMediaType.parse(mime),
+      ),
+      'subject': subject,
+      if (prompt != null) 'prompt': prompt,
+    });
+    final r = await _dio.post('/chat-vision', data: form);
+    return r.data['reply'] as String;
+  }
+
   Future<Uint8List> synthesize(String text,
       {String language = 'en', String? voice}) async {
     final response = await _dio.post(

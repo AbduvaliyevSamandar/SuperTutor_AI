@@ -12,14 +12,17 @@ class Settings(BaseSettings):
     # LLM providers (cascade order: groq -> openai -> gemini)
     groq_api_key: str = ""
     groq_llm_model: str = "llama-3.3-70b-versatile"
+    groq_vision_model: str = "meta-llama/llama-4-scout-17b-16e-instruct"
     groq_stt_model: str = "whisper-large-v3"
 
     openai_api_key: str = ""
     openai_llm_model: str = "gpt-4o-mini"
+    openai_vision_model: str = "gpt-4o-mini"
     openai_stt_model: str = "whisper-1"
 
     gemini_api_key: str = ""
     gemini_model: str = "gemini-2.0-flash"
+    gemini_vision_model: str = "gemini-2.0-flash"
 
     supabase_url: str = ""
     supabase_anon_key: str = ""

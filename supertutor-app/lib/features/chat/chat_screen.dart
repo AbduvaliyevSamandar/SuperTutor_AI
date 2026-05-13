@@ -3,7 +3,9 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
@@ -29,13 +31,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _scroll = ScrollController();
   final _player = AudioPlayer();
   final _recorder = AudioRecorder();
+  final _picker = ImagePicker();
   bool _speaking = false;
   bool _recording = false;
   bool _transcribing = false;
+  bool _analyzing = false;
 
   String? _sessionId;
   DateTime? _sessionStart;
   int _messagesCount = 0;
+
+  bool get _supportsVision => widget.subject == 'math';
 
   @override
   void initState() {
@@ -222,6 +228,113 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
+  Future<void> _pickAndAnalyze(ImageSource source) async {
+    if (_analyzing) return;
+    final XFile? file;
+    try {
+      file = await _picker.pickImage(source: source, imageQuality: 85);
+    } catch (e) {
+      _showMessage('Rasm tanlash xatosi: $e');
+      return;
+    }
+    if (file == null) return;
+
+    final bytes = await file.readAsBytes();
+    final ctrl = ref.read(chatControllerProvider(widget.subject).notifier);
+
+    ctrl.appendUserMessage(
+      ChatMessage(
+        role: 'user',
+        content: '📷 Rasm yuborildi',
+        imageBytes: bytes,
+      ),
+    );
+    _messagesCount += 1;
+    _scrollToBottom();
+
+    setState(() => _analyzing = true);
+    try {
+      final mime = _mimeFromName(file.name);
+      final repo = ref.read(chatRepositoryProvider);
+      final reply = await repo.analyzeImage(
+        imageBytes: bytes,
+        subject: widget.subject,
+        filename: file.name,
+        mime: mime,
+      );
+      ctrl.appendAssistantMessage(reply);
+      _updateSession();
+      _scrollToBottom();
+    } catch (e) {
+      _showMessage('Vision xatosi: $e');
+    } finally {
+      if (mounted) setState(() => _analyzing = false);
+    }
+  }
+
+  String _mimeFromName(String name) {
+    final lower = name.toLowerCase();
+    if (lower.endsWith('.png')) return 'image/png';
+    if (lower.endsWith('.webp')) return 'image/webp';
+    if (lower.endsWith('.heic')) return 'image/heic';
+    return 'image/jpeg';
+  }
+
+  void _showImagePickerSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => SafeArea(
+        child: Container(
+          margin: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.fire.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.camera_alt, color: AppColors.fire),
+                ),
+                title: const Text('Kamera bilan suratga olish',
+                    style: TextStyle(fontWeight: FontWeight.w700)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickAndAnalyze(ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.secondary.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.photo_library,
+                      color: AppColors.secondary),
+                ),
+                title: const Text('Galereyadan tanlash',
+                    style: TextStyle(fontWeight: FontWeight.w700)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickAndAnalyze(ImageSource.gallery);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _showMessage(String msg) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
@@ -242,7 +355,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(chatControllerProvider(widget.subject));
-    final busy = state.sending || _transcribing;
+    final busy = state.sending || _transcribing || _analyzing;
 
     return Scaffold(
       appBar: AppBar(
@@ -320,6 +433,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               ),
               child: Row(
                 children: [
+                  if (_supportsVision) ...[
+                    _IconBubble(
+                      icon: Icons.camera_alt_rounded,
+                      color: AppColors.fire,
+                      darkColor: AppColors.fireDark,
+                      onTap: busy ? null : _showImagePickerSheet,
+                    ),
+                    const SizedBox(width: 6),
+                  ],
                   _MicButton(
                     recording: _recording,
                     onTap: busy && !_recording ? null : _toggleRecord,
@@ -333,7 +455,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       decoration: InputDecoration(
                         hintText: _recording
                             ? 'Yozilmoqda...'
-                            : 'Xabar yozing...',
+                            : _analyzing
+                                ? 'Rasm tahlil qilinmoqda...'
+                                : 'Xabar yozing...',
                         contentPadding: const EdgeInsets.symmetric(
                             horizontal: 14, vertical: 12),
                       ),
@@ -362,6 +486,7 @@ class _Bubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isUser = message.role == 'user';
+    final hasImage = message.imageBytes != null;
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -384,10 +509,11 @@ class _Bubble extends StatelessWidget {
           ],
           Flexible(
             child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: hasImage
+                  ? const EdgeInsets.all(6)
+                  : const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               constraints: BoxConstraints(
-                  maxWidth: MediaQuery.of(context).size.width * 0.72),
+                  maxWidth: MediaQuery.of(context).size.width * 0.78),
               decoration: BoxDecoration(
                 color: isUser ? accent : AppColors.surface,
                 borderRadius: BorderRadius.only(
@@ -400,18 +526,121 @@ class _Bubble extends StatelessWidget {
                     ? null
                     : Border.all(color: AppColors.border, width: 1.5),
               ),
-              child: Text(
-                message.content,
-                style: TextStyle(
-                  color: isUser ? Colors.white : AppColors.ink,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 15,
-                  height: 1.35,
-                ),
-              ),
+              child: hasImage
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.memory(
+                        Uint8List.fromList(message.imageBytes!),
+                        fit: BoxFit.cover,
+                      ),
+                    )
+                  : (isUser
+                      ? Text(
+                          message.content,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                            height: 1.35,
+                          ),
+                        )
+                      : MarkdownBody(
+                          data: message.content,
+                          styleSheet: _markdownStyle(context, accent),
+                          shrinkWrap: true,
+                          softLineBreak: true,
+                        )),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+MarkdownStyleSheet _markdownStyle(BuildContext context, Color accent) {
+  return MarkdownStyleSheet(
+    p: const TextStyle(
+      color: AppColors.ink,
+      fontWeight: FontWeight.w600,
+      fontSize: 15,
+      height: 1.35,
+    ),
+    h1: const TextStyle(
+      color: AppColors.ink,
+      fontWeight: FontWeight.w800,
+      fontSize: 20,
+    ),
+    h2: const TextStyle(
+      color: AppColors.ink,
+      fontWeight: FontWeight.w800,
+      fontSize: 17,
+    ),
+    h3: const TextStyle(
+      color: AppColors.ink,
+      fontWeight: FontWeight.w800,
+      fontSize: 15,
+    ),
+    code: const TextStyle(
+      backgroundColor: Color(0xFFEEEEEE),
+      fontFamily: 'monospace',
+      fontSize: 13,
+    ),
+    tableHead: TextStyle(
+      color: accent,
+      fontWeight: FontWeight.w800,
+      fontSize: 13,
+    ),
+    tableBody: const TextStyle(
+      color: AppColors.ink,
+      fontWeight: FontWeight.w500,
+      fontSize: 13,
+      height: 1.3,
+    ),
+    tableBorder: TableBorder.all(color: AppColors.border, width: 1),
+    tableColumnWidth: const IntrinsicColumnWidth(),
+    tableCellsPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+    blockquote: const TextStyle(
+      color: AppColors.inkLight,
+      fontStyle: FontStyle.italic,
+    ),
+  );
+}
+
+class _IconBubble extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final Color darkColor;
+  final VoidCallback? onTap;
+  const _IconBubble({
+    required this.icon,
+    required this.color,
+    required this.darkColor,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final disabled = onTap == null;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          color: disabled ? AppColors.inkLighter : color,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: disabled
+                  ? AppColors.inkLighter.withValues(alpha: 0.8)
+                  : darkColor,
+              offset: const Offset(0, 3),
+              blurRadius: 0,
+            ),
+          ],
+        ),
+        child: Icon(icon, color: Colors.white, size: 22),
       ),
     );
   }
