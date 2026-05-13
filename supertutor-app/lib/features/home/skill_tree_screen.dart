@@ -19,13 +19,14 @@ class _LessonNode {
   final String title;
   final String subject;
   final Color color;
-  final _NodeStatus status;
+  /// Number of completed sessions of `subject` required for this node to be CURRENT.
+  final int unlockAfter;
   const _LessonNode(
     this.emoji,
     this.title,
     this.subject,
     this.color,
-    this.status,
+    this.unlockAfter,
   );
 }
 
@@ -33,23 +34,43 @@ class SkillTreeScreen extends ConsumerWidget {
   const SkillTreeScreen({super.key});
 
   static const _nodes = <_LessonNode>[
-    _LessonNode('🇬🇧', 'Ingliz: salomlashish', 'english', AppColors.secondary, _NodeStatus.current),
-    _LessonNode('🇬🇧', 'Ingliz: oddiy savollar', 'english', AppColors.secondary, _NodeStatus.locked),
-    _LessonNode('🇬🇧', 'Ingliz: oilam', 'english', AppColors.secondary, _NodeStatus.locked),
-    _LessonNode('📐', 'Matematika: 4 amal', 'math', AppColors.fire, _NodeStatus.locked),
-    _LessonNode('🇷🇺', 'Rus tili: tanishuv', 'russian', AppColors.heart, _NodeStatus.locked),
-    _LessonNode('🇩🇪', 'Nemis: alifbo', 'german', AppColors.gold, _NodeStatus.locked),
-    _LessonNode('🇹🇷', 'Turk: oddiy gap', 'turkish', AppColors.primary, _NodeStatus.locked),
+    _LessonNode('🇬🇧', 'Salomlashish', 'english', AppColors.secondary, 0),
+    _LessonNode('🇬🇧', 'Oddiy savollar', 'english', AppColors.secondary, 1),
+    _LessonNode('🇬🇧', 'Oila va do\'stlar', 'english', AppColors.secondary, 2),
+    _LessonNode('🇬🇧', 'Sevimli ishlar', 'english', AppColors.secondary, 3),
+    _LessonNode('📐', 'Matematika asoslari', 'math', AppColors.fire, 0),
+    _LessonNode('🇷🇺', 'Rus tili: tanishuv', 'russian', AppColors.heart, 0),
+    _LessonNode('🇩🇪', 'Nemis: alifbo', 'german', AppColors.gold, 0),
+    _LessonNode('🇹🇷', 'Turk tili: salom', 'turkish', AppColors.primary, 0),
   ];
+
+  int _sessionsFor(String subject, dynamic stats) {
+    if (stats == null) return 0;
+    switch (subject) {
+      case 'english':
+        return (stats.englishSessions as int?) ?? 0;
+      case 'math':
+        return (stats.mathSessions as int?) ?? 0;
+      default:
+        return 0;
+    }
+  }
+
+  _NodeStatus _statusFor(_LessonNode node, dynamic stats) {
+    final done = _sessionsFor(node.subject, stats);
+    if (done > node.unlockAfter) return _NodeStatus.completed;
+    if (done == node.unlockAfter) return _NodeStatus.current;
+    return _NodeStatus.locked;
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authControllerProvider);
     final statsAsync =
         auth.isAuthenticated ? ref.watch(myStatsProvider) : null;
-    final streak = statsAsync?.maybeWhen(
-            data: (s) => s.streakDays, orElse: () => 0) ??
-        0;
+    final stats =
+        statsAsync?.maybeWhen(data: (s) => s, orElse: () => null);
+    final streak = stats?.streakDays ?? 0;
     final currency = ref.watch(currencyControllerProvider);
     final hearts = currency?.hearts ?? 5;
     final xp = currency?.xpTotal ?? 0;
@@ -144,16 +165,23 @@ class SkillTreeScreen extends ConsumerWidget {
               ),
             ),
             ...List.generate(_nodes.length, (i) {
+              final node = _nodes[i];
+              final status = _statusFor(node, stats);
               return _SkillNode(
-                node: _nodes[i],
+                node: node,
                 index: i,
-                onTap: _nodes[i].status == _NodeStatus.locked
-                    ? null
+                status: status,
+                onTap: status == _NodeStatus.locked
+                    ? () => ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                              content: Text(
+                                  'Avval ${node.subject} bo\'yicha oldingi darslarni tugating.')),
+                        )
                     : () {
                         if (hearts <= 0 && auth.isAuthenticated) {
                           _showHeartsModal(context, ref);
                         } else {
-                          context.push('/chat/${_nodes[i].subject}');
+                          context.push('/chat/${node.subject}');
                         }
                       },
               );
@@ -170,29 +198,31 @@ class SkillTreeScreen extends ConsumerWidget {
 class _SkillNode extends StatelessWidget {
   final _LessonNode node;
   final int index;
+  final _NodeStatus status;
   final VoidCallback? onTap;
 
   const _SkillNode({
     required this.node,
     required this.index,
+    required this.status,
     required this.onTap,
   });
 
   static const _amplitude = 60.0;
 
-  Color get _ringColor => switch (node.status) {
+  Color get _ringColor => switch (status) {
         _NodeStatus.completed => AppColors.primary,
         _NodeStatus.current => node.color,
         _NodeStatus.locked => AppColors.borderDark,
       };
 
-  Color get _bgColor => switch (node.status) {
+  Color get _bgColor => switch (status) {
         _NodeStatus.completed => AppColors.primary,
         _NodeStatus.current => node.color,
         _NodeStatus.locked => AppColors.surface,
       };
 
-  IconData get _statusIcon => switch (node.status) {
+  IconData get _statusIcon => switch (status) {
         _NodeStatus.completed => Icons.check_rounded,
         _NodeStatus.current => Icons.star_rounded,
         _NodeStatus.locked => Icons.lock_rounded,
@@ -232,7 +262,7 @@ class _SkillNode extends StatelessWidget {
                     alignment: Alignment.center,
                     children: [
                       Text(node.emoji, style: const TextStyle(fontSize: 36)),
-                      if (node.status != _NodeStatus.current)
+                      if (status != _NodeStatus.current)
                         Positioned(
                           bottom: 4,
                           right: 4,
@@ -258,7 +288,7 @@ class _SkillNode extends StatelessWidget {
                 style: TextStyle(
                   fontWeight: FontWeight.w700,
                   fontSize: 13,
-                  color: node.status == _NodeStatus.locked
+                  color: status == _NodeStatus.locked
                       ? AppColors.inkLighter
                       : AppColors.ink,
                 ),

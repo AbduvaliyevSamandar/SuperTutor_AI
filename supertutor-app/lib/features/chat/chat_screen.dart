@@ -13,6 +13,7 @@ import 'package:record/record.dart';
 import '../../core/theme.dart';
 import '../../widgets/avatar_view.dart';
 import '../auth/auth_controller.dart';
+import '../currency/currency_controller.dart';
 import '../dashboard/stats_repository.dart';
 import 'chat_controller.dart';
 import 'chat_models.dart';
@@ -145,6 +146,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         ref.read(chatControllerProvider(widget.subject)).messages.lastOrNull;
     if (last != null && last.role == 'assistant') {
       _speak(last.content);
+      if (ref.read(authControllerProvider).isAuthenticated) {
+        try {
+          await ref
+              .read(currencyControllerProvider.notifier)
+              .awardXp(2, reason: 'chat');
+        } catch (_) {}
+      }
     }
     _updateSession();
     _scrollToBottom();
