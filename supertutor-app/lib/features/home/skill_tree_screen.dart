@@ -10,6 +10,7 @@ import '../../widgets/streak_banner.dart';
 import '../auth/auth_controller.dart';
 import '../currency/currency_controller.dart';
 import '../dashboard/stats_repository.dart';
+import 'word_of_the_day.dart';
 
 enum _NodeStatus { completed, current, locked }
 
@@ -105,18 +106,25 @@ class SkillTreeScreen extends ConsumerWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(0, 8, 0, 32),
           children: [
+            const SizedBox(height: 8),
+            const Center(child: AnimatedMascot(size: 90)),
+            const SizedBox(height: 12),
             if (auth.isAuthenticated && currency != null)
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
                 child: _DailyGoalCard(currency: currency, ref: ref),
               ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
               child: StreakBanner(
                 days: streak,
                 cta: 'Boshlash',
                 onCta: () => context.push('/chat/english'),
               ),
+            ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 4, 20, 16),
+              child: WordOfTheDayCard(),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 4, 24, 8),
