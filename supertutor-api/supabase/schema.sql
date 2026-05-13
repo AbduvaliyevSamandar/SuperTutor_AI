@@ -69,7 +69,47 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
 
--- 5. Aggregate view for dashboard
+-- 5. Streak trigger: update streak_days + last_active_date whenever a session starts
+create or replace function public.update_streak_on_session()
+returns trigger
+language plpgsql
+security definer
+as $$
+declare
+  today date := current_date;
+  last_active date;
+  current_streak int;
+begin
+  select last_active_date, streak_days
+    into last_active, current_streak
+    from public.profiles
+   where user_id = new.user_id;
+
+  if last_active is null then
+    current_streak := 1;
+  elsif last_active = today then
+    return new;
+  elsif last_active = today - 1 then
+    current_streak := coalesce(current_streak, 0) + 1;
+  else
+    current_streak := 1;
+  end if;
+
+  update public.profiles
+     set last_active_date = today,
+         streak_days = current_streak
+   where user_id = new.user_id;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists on_session_started on public.sessions;
+create trigger on_session_started
+  after insert on public.sessions
+  for each row execute function public.update_streak_on_session();
+
+-- 6. Aggregate view for dashboard
 create or replace view public.user_stats as
 select
   s.user_id,

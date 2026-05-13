@@ -46,22 +46,22 @@ const _subjects = <_Subject>[
       title: 'Rus tili',
       emoji: '🇷🇺',
       accent: AppColors.heart,
-      subtitle: 'Tez orada',
-      enabled: false),
+      subtitle: 'Suhbat + grammatika',
+      enabled: true),
   _Subject(
       id: 'german',
       title: 'Nemis tili',
       emoji: '🇩🇪',
       accent: AppColors.gold,
-      subtitle: 'Tez orada',
-      enabled: false),
+      subtitle: 'A1 dan boshlang',
+      enabled: true),
   _Subject(
       id: 'turkish',
       title: 'Turk tili',
       emoji: '🇹🇷',
       accent: AppColors.primary,
-      subtitle: 'Tez orada',
-      enabled: false),
+      subtitle: 'Tezkor o\'rganish',
+      enabled: true),
 ];
 
 class HomeScreen extends ConsumerWidget {

@@ -77,22 +77,37 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   String get _subjectTitle => switch (widget.subject) {
         'math' => 'Matematika',
         'english' => 'Ingliz tili',
+        'russian' => 'Rus tili',
+        'german' => 'Nemis tili',
+        'turkish' => 'Turk tili',
         _ => widget.subject,
       };
 
   String get _subjectEmoji => switch (widget.subject) {
         'math' => '📐',
         'english' => '🇬🇧',
+        'russian' => '🇷🇺',
+        'german' => '🇩🇪',
+        'turkish' => '🇹🇷',
         _ => '🎓',
       };
 
   Color get _subjectColor => switch (widget.subject) {
         'math' => AppColors.fire,
         'english' => AppColors.secondary,
+        'russian' => AppColors.heart,
+        'german' => AppColors.gold,
+        'turkish' => AppColors.primary,
         _ => AppColors.primary,
       };
 
-  String get _voiceLang => widget.subject == 'math' ? 'uz' : 'en';
+  String get _voiceLang => switch (widget.subject) {
+        'math' => 'uz',
+        'russian' => 'ru',
+        'german' => 'de',
+        'turkish' => 'tr',
+        _ => 'en',
+      };
 
   @override
   void dispose() {
