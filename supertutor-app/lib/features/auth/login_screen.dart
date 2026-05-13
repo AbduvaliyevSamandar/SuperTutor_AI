@@ -39,6 +39,103 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+  Future<void> _showForgotPassword() async {
+    final emailCtrl = TextEditingController(text: _email.text);
+    final passCtrl = TextEditingController();
+    bool obscure = true;
+    String? error;
+    bool loading = false;
+
+    final ok = await showDialog<bool>(
+      context: context,
+      barrierDismissible: !loading,
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setSB) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20)),
+          title: const Text('Parolni qayta o\'rnatish'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: emailCtrl,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(
+                  hintText: 'Email',
+                  prefixIcon: Icon(Icons.email_outlined),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: passCtrl,
+                obscureText: obscure,
+                decoration: InputDecoration(
+                  hintText: 'Yangi parol',
+                  prefixIcon: const Icon(Icons.lock_outline),
+                  suffixIcon: IconButton(
+                    icon: Icon(obscure
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined),
+                    onPressed: () => setSB(() => obscure = !obscure),
+                  ),
+                ),
+              ),
+              if (error != null) ...[
+                const SizedBox(height: 8),
+                Text(error!,
+                    style: const TextStyle(
+                        color: AppColors.heartDark,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600)),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: loading ? null : () => Navigator.pop(ctx, false),
+              child: const Text('Bekor qilish'),
+            ),
+            FilledButton(
+              onPressed: loading
+                  ? null
+                  : () async {
+                      setSB(() {
+                        error = null;
+                        loading = true;
+                      });
+                      final res = await ref
+                          .read(authControllerProvider.notifier)
+                          .resetPassword(emailCtrl.text, passCtrl.text);
+                      if (res != null) {
+                        setSB(() {
+                          error = res;
+                          loading = false;
+                        });
+                      } else {
+                        if (ctx.mounted) Navigator.pop(ctx, true);
+                      }
+                    },
+              child: loading
+                  ? const SizedBox(
+                      height: 18, width: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Text('Yangilash'),
+            ),
+          ],
+        );
+      }),
+    );
+
+    if (ok == true && mounted) {
+      _email.text = emailCtrl.text;
+      _password.text = passCtrl.text;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Parol yangilandi. Endi kirishingiz mumkin.')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(authControllerProvider);
@@ -166,33 +263,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 variant: DuoButtonVariant.outline,
                 onPressed: () => setState(() => _signup = !_signup),
               ),
-              const SizedBox(height: 18),
-              Row(
-                children: const [
-                  Expanded(child: Divider(color: AppColors.border, thickness: 1.5)),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12),
-                    child: Text('YOKI',
-                        style: TextStyle(
-                            color: AppColors.inkLighter,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 12)),
+              if (!_signup) ...[
+                const SizedBox(height: 6),
+                TextButton(
+                  onPressed: state.loading ? null : _showForgotPassword,
+                  child: const Text(
+                    'Parolni unutdingizmi?',
+                    style: TextStyle(
+                      color: AppColors.secondary,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                  Expanded(child: Divider(color: AppColors.border, thickness: 1.5)),
-                ],
-              ),
+                ),
+              ],
               const SizedBox(height: 18),
-              DuoButton(
-                label: 'Google bilan kirish',
-                variant: DuoButtonVariant.outline,
-                icon: Icons.account_circle_outlined,
-                onPressed: state.loading
-                    ? null
-                    : () => ref
-                        .read(authControllerProvider.notifier)
-                        .signInWithGoogle(),
-              ),
-              const SizedBox(height: 10),
               DuoButton(
                 label: 'Mehmon sifatida davom etish',
                 variant: DuoButtonVariant.neutral,

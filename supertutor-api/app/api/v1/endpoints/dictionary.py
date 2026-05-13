@@ -1,5 +1,7 @@
-"""LLM-powered dictionary lookup. Returns definition, examples, translation."""
+"""LLM-powered dictionary lookup. Returns definition, examples, translation
+between any source and target language pair (en, ru, de, tr, uz)."""
 import json
+import re
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -11,54 +13,106 @@ from app.services.llm.orchestrator import AllProvidersFailed, chat_with_fallback
 router = APIRouter()
 
 
-_LANG_NAMES = {
+LANG_NAMES = {
     "en": "English",
     "ru": "Russian",
     "de": "German",
     "tr": "Turkish",
+    "uz": "Uzbek",
 }
 
 
 class LookupResponse(BaseModel):
     word: str
-    language: str
+    source: str
+    target: str
     part_of_speech: str | None = None
-    translation_uz: str
+    translation: str
     definition: str
     examples: list[str]
+    example_translations: list[str] = []
     synonyms: list[str] = []
 
 
 class SaveWordRequest(BaseModel):
     word: str
-    language: str
-    translation_uz: str
+    source: str
+    target: str
+    translation: str
     definition: str
 
 
-def _build_prompt(word: str, language: str) -> str:
-    lang_name = _LANG_NAMES.get(language, "English")
+def _normalize_lang(code: str | None, default: str) -> str:
+    if not code:
+        return default
+    c = code.lower().strip()
+    return c if c in LANG_NAMES else default
+
+
+def _build_prompt(word: str, source: str, target: str) -> str:
+    src = LANG_NAMES.get(source, "English")
+    tgt = LANG_NAMES.get(target, "Uzbek")
     return (
-        f"Define the {lang_name} word \"{word}\" for an Uzbek learner. "
-        "Return ONLY a JSON object (no markdown, no commentary) with keys: "
-        "part_of_speech (noun/verb/adj/...), "
-        "translation_uz (short Uzbek translation), "
-        "definition (one-sentence definition in simple English), "
-        "examples (array of 2 short usage sentences with the word in context), "
-        "synonyms (array of 2-3 close synonyms). "
-        "Keep all values plain strings without surrounding quotes."
+        f'Dictionary entry for the {src} word "{word}", '
+        f'translated and explained for a {tgt} speaker.\n'
+        "Return ONLY one JSON object (no markdown fences, no commentary, no prose). "
+        "Schema:\n"
+        "{\n"
+        '  "part_of_speech": "noun|verb|adjective|adverb|phrase",\n'
+        f'  "translation": "concise {tgt} translation",\n'
+        f'  "definition": "one short sentence in {tgt} explaining the word",\n'
+        f'  "examples": ["{src} sentence with the word", "another {src} sentence"],\n'
+        f'  "example_translations": ["{tgt} translation of example 1", "translation 2"],\n'
+        f'  "synonyms": ["{src} synonym 1", "synonym 2"]\n'
+        "}\n"
+        "Examples must be in the SOURCE language. Translations in the TARGET language."
     )
 
 
+_JSON_RE = re.compile(r"\{[\s\S]*\}", re.MULTILINE)
+
+
+def _extract_json(text: str) -> dict | None:
+    text = text.strip()
+    if text.startswith("```"):
+        text = text.split("```", 2)[1]
+        if text.startswith("json"):
+            text = text[4:]
+        text = text.rsplit("```", 1)[0].strip()
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+    m = _JSON_RE.search(text)
+    if not m:
+        return None
+    try:
+        return json.loads(m.group(0))
+    except json.JSONDecodeError:
+        return None
+
+
 @router.get("/dictionary/lookup", response_model=LookupResponse)
-def lookup(word: str, language: str = "en") -> LookupResponse:
+def lookup(
+    word: str,
+    source: str = "en",
+    target: str = "uz",
+    language: str | None = None,
+) -> LookupResponse:
     if not word.strip():
         raise HTTPException(status_code=400, detail="word is empty")
 
-    prompt = _build_prompt(word.strip(), language)
+    src = _normalize_lang(language or source, default="en")
+    tgt = _normalize_lang(target, default="uz")
+    if src == tgt:
+        tgt = "uz" if src != "uz" else "en"
+
     messages = [
-        {"role": "system", "content": "You are a precise dictionary assistant. Always reply in JSON."},
-        {"role": "user", "content": prompt},
+        {
+            "role": "system",
+            "content": "You are a precise bilingual dictionary. Reply with ONE JSON object only.",
+        },
+        {"role": "user", "content": _build_prompt(word.strip(), src, tgt)},
     ]
 
     try:
@@ -66,34 +120,21 @@ def lookup(word: str, language: str = "en") -> LookupResponse:
     except AllProvidersFailed as e:
         raise HTTPException(status_code=503, detail=str(e)) from e
 
-    # Strip code fences if any
-    text = reply.strip()
-    if text.startswith("```"):
-        text = text.split("```", 2)[1]
-        if text.startswith("json"):
-            text = text[4:]
-        text = text.rsplit("```", 1)[0]
-
-    try:
-        data = json.loads(text)
-    except json.JSONDecodeError:
-        # Fallback: return a stub built from raw reply
-        return LookupResponse(
-            word=word,
-            language=language,
-            definition=reply.strip()[:200],
-            translation_uz="(no parse)",
-            examples=[],
-        )
+    data = _extract_json(reply) or {}
 
     return LookupResponse(
         word=word,
-        language=language,
+        source=src,
+        target=tgt,
         part_of_speech=data.get("part_of_speech"),
-        translation_uz=data.get("translation_uz", ""),
-        definition=data.get("definition", ""),
-        examples=data.get("examples", [])[:5],
-        synonyms=data.get("synonyms", [])[:5],
+        translation=str(data.get("translation", "")).strip() or "—",
+        definition=str(data.get("definition", "")).strip()
+        or reply.strip()[:200],
+        examples=[str(x) for x in (data.get("examples") or [])][:5],
+        example_translations=[
+            str(x) for x in (data.get("example_translations") or [])
+        ][:5],
+        synonyms=[str(x) for x in (data.get("synonyms") or [])][:5],
     )
 
 
@@ -111,8 +152,8 @@ def save_word(
         {
             "user_id": user_id,
             "word": req.word,
-            "language": req.language,
-            "translation_uz": req.translation_uz,
+            "language": req.source,
+            "translation_uz": req.translation,
             "definition": req.definition,
         },
         on_conflict="user_id,word,language",

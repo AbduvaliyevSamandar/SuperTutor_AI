@@ -1,29 +1,36 @@
 class WordEntry {
   final String word;
-  final String language;
+  final String source;
+  final String target;
   final String? partOfSpeech;
-  final String translationUz;
+  final String translation;
   final String definition;
   final List<String> examples;
+  final List<String> exampleTranslations;
   final List<String> synonyms;
 
   const WordEntry({
     required this.word,
-    required this.language,
+    required this.source,
+    required this.target,
     this.partOfSpeech,
-    required this.translationUz,
+    required this.translation,
     required this.definition,
     required this.examples,
+    required this.exampleTranslations,
     required this.synonyms,
   });
 
   factory WordEntry.fromJson(Map<String, dynamic> j) => WordEntry(
         word: j['word'] ?? '',
-        language: j['language'] ?? 'en',
+        source: j['source'] ?? 'en',
+        target: j['target'] ?? 'uz',
         partOfSpeech: j['part_of_speech'],
-        translationUz: j['translation_uz'] ?? '',
+        translation: j['translation'] ?? '',
         definition: j['definition'] ?? '',
         examples: List<String>.from(j['examples'] ?? const []),
+        exampleTranslations:
+            List<String>.from(j['example_translations'] ?? const []),
         synonyms: List<String>.from(j['synonyms'] ?? const []),
       );
 }
@@ -31,14 +38,14 @@ class WordEntry {
 class SavedWord {
   final String word;
   final String language;
-  final String translationUz;
+  final String translation;
   final String definition;
   final DateTime? savedAt;
 
   SavedWord({
     required this.word,
     required this.language,
-    required this.translationUz,
+    required this.translation,
     required this.definition,
     this.savedAt,
   });
@@ -46,8 +53,9 @@ class SavedWord {
   factory SavedWord.fromJson(Map<String, dynamic> j) => SavedWord(
         word: j['word'] ?? '',
         language: j['language'] ?? 'en',
-        translationUz: j['translation_uz'] ?? '',
+        translation: j['translation_uz'] ?? '',
         definition: j['definition'] ?? '',
-        savedAt: j['saved_at'] != null ? DateTime.tryParse(j['saved_at']) : null,
+        savedAt:
+            j['saved_at'] != null ? DateTime.tryParse(j['saved_at']) : null,
       );
 }

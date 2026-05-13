@@ -47,9 +47,43 @@ class AuthController extends StateNotifier<AuthState> {
           .signInWithPassword(email: email.trim(), password: password);
       state = state.copyWith(loading: false);
     } on AuthException catch (e) {
+      final msg = e.message.toLowerCase();
+      // Auto-recover pre-existing accounts whose email confirmation was never sent.
+      if (msg.contains('email') &&
+          (msg.contains('not confirmed') || msg.contains('not_confirmed'))) {
+        try {
+          await _dio.post('/auth/ensure-confirmed', data: {'email': email.trim()});
+          await Supabase.instance.client.auth
+              .signInWithPassword(email: email.trim(), password: password);
+          state = state.copyWith(loading: false);
+          return;
+        } catch (_) {}
+      }
       state = state.copyWith(loading: false, error: _humanize(e.message));
     } catch (e) {
       state = state.copyWith(loading: false, error: e.toString());
+    }
+  }
+
+  /// Returns null on success, error message on failure.
+  Future<String?> resetPassword(String email, String newPassword) async {
+    state = state.copyWith(loading: true, error: null);
+    try {
+      await _dio.post('/auth/reset-password', data: {
+        'email': email.trim(),
+        'new_password': newPassword,
+      });
+      state = state.copyWith(loading: false);
+      return null;
+    } on DioException catch (e) {
+      final detail = (e.response?.data is Map)
+          ? (e.response!.data['detail']?.toString() ?? e.message ?? 'Xato')
+          : (e.message ?? 'Xato');
+      state = state.copyWith(loading: false, error: detail);
+      return detail;
+    } catch (e) {
+      state = state.copyWith(loading: false, error: e.toString());
+      return e.toString();
     }
   }
 

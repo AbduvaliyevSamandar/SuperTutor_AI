@@ -7,10 +7,18 @@ class DictionaryRepository {
   final Dio _dio;
   DictionaryRepository(this._dio);
 
-  Future<WordEntry> lookup(String word, {String language = 'en'}) async {
+  Future<WordEntry> lookup(
+    String word, {
+    String source = 'en',
+    String target = 'uz',
+  }) async {
     final r = await _dio.get(
       '/dictionary/lookup',
-      queryParameters: {'word': word, 'language': language},
+      queryParameters: {
+        'word': word,
+        'source': source,
+        'target': target,
+      },
     );
     return WordEntry.fromJson(Map<String, dynamic>.from(r.data));
   }
@@ -18,8 +26,9 @@ class DictionaryRepository {
   Future<void> save(WordEntry e) async {
     await _dio.post('/dictionary/save', data: {
       'word': e.word,
-      'language': e.language,
-      'translation_uz': e.translationUz,
+      'source': e.source,
+      'target': e.target,
+      'translation': e.translation,
       'definition': e.definition,
     });
   }
