@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/api_client.dart';
 import '../../core/config.dart';
 
 class AuthState {
@@ -22,9 +24,10 @@ class AuthState {
 }
 
 class AuthController extends StateNotifier<AuthState> {
+  final Dio _dio;
   StreamSubscription<AuthState>? _sub;
 
-  AuthController() : super(const AuthState()) {
+  AuthController(this._dio) : super(const AuthState()) {
     if (!AppConfig.supabaseConfigured) return;
     final client = Supabase.instance.client;
     state = AuthState(session: client.auth.currentSession);
@@ -44,28 +47,80 @@ class AuthController extends StateNotifier<AuthState> {
           .signInWithPassword(email: email.trim(), password: password);
       state = state.copyWith(loading: false);
     } on AuthException catch (e) {
-      state = state.copyWith(loading: false, error: e.message);
+      state = state.copyWith(loading: false, error: _humanize(e.message));
+    } catch (e) {
+      state = state.copyWith(loading: false, error: e.toString());
     }
   }
 
-  Future<void> signUp(String email, String password) async {
+  /// Signup goes through backend /auth/signup which auto-confirms the user,
+  /// then we sign in immediately so no email verification step is needed.
+  Future<void> signUp(String email, String password,
+      {String? displayName}) async {
     if (!AppConfig.supabaseConfigured) {
       state = state.copyWith(error: 'Supabase kalitlari sozlanmagan');
       return;
     }
     state = state.copyWith(loading: true, error: null);
     try {
+      await _dio.post('/auth/signup', data: {
+        'email': email.trim(),
+        'password': password,
+        if (displayName != null && displayName.isNotEmpty)
+          'display_name': displayName,
+      });
       await Supabase.instance.client.auth
-          .signUp(email: email.trim(), password: password);
+          .signInWithPassword(email: email.trim(), password: password);
+      state = state.copyWith(loading: false);
+    } on DioException catch (e) {
+      final status = e.response?.statusCode;
+      final detail = (e.response?.data is Map)
+          ? (e.response!.data['detail']?.toString() ?? e.message)
+          : (e.message ?? 'Network error');
+      if (status == 409) {
+        state = state.copyWith(
+            loading: false, error: 'Bu email allaqachon ro\'yxatdan o\'tgan');
+      } else {
+        state = state.copyWith(loading: false, error: detail);
+      }
+    } on AuthException catch (e) {
+      state = state.copyWith(loading: false, error: _humanize(e.message));
+    } catch (e) {
+      state = state.copyWith(loading: false, error: e.toString());
+    }
+  }
+
+  Future<void> signInWithGoogle() async {
+    if (!AppConfig.supabaseConfigured) {
+      state = state.copyWith(error: 'Supabase kalitlari sozlanmagan');
+      return;
+    }
+    state = state.copyWith(loading: true, error: null);
+    try {
+      await Supabase.instance.client.auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: AppConfig.googleRedirectUrl,
+      );
       state = state.copyWith(loading: false);
     } on AuthException catch (e) {
-      state = state.copyWith(loading: false, error: e.message);
+      state = state.copyWith(loading: false, error: _humanize(e.message));
+    } catch (e) {
+      state = state.copyWith(loading: false, error: e.toString());
     }
   }
 
   Future<void> signOut() async {
     if (!AppConfig.supabaseConfigured) return;
     await Supabase.instance.client.auth.signOut();
+  }
+
+  String _humanize(String msg) {
+    final m = msg.toLowerCase();
+    if (m.contains('invalid login')) return 'Email yoki parol noto\'g\'ri';
+    if (m.contains('email not confirmed')) return 'Email tasdiqlanmagan';
+    if (m.contains('user already')) return 'Bu email allaqachon ishlatilgan';
+    if (m.contains('password should')) return 'Parol kamida 6 ta belgi bo\'lsin';
+    return msg;
   }
 
   @override
@@ -77,5 +132,5 @@ class AuthController extends StateNotifier<AuthState> {
 
 final authControllerProvider =
     StateNotifierProvider<AuthController, AuthState>((ref) {
-  return AuthController();
+  return AuthController(ref.watch(dioProvider));
 });

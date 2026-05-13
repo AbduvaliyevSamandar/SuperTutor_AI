@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme.dart';
 import '../dashboard/dashboard_screen.dart';
+import '../dictionary/dictionary_screen.dart';
 import '../home/home_screen.dart';
+import '../learn/learn_screen.dart';
 import '../profile/profile_screen.dart';
 
 class HomeShell extends StatefulWidget {
@@ -17,6 +19,8 @@ class _HomeShellState extends State<HomeShell> {
 
   static const _pages = [
     HomeScreen(),
+    LearnScreen(),
+    DictionaryScreen(),
     DashboardScreen(),
     ProfileScreen(),
   ];
@@ -39,7 +43,7 @@ class _HomeShellState extends State<HomeShell> {
               backgroundColor: AppColors.bg,
               indicatorColor: AppColors.primary.withValues(alpha: 0.15),
               labelTextStyle: WidgetStateProperty.all(
-                const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+                const TextStyle(fontWeight: FontWeight.w700, fontSize: 11),
               ),
               iconTheme: WidgetStateProperty.resolveWith((states) {
                 final selected = states.contains(WidgetState.selected);
@@ -56,6 +60,16 @@ class _HomeShellState extends State<HomeShell> {
                   icon: Icon(Icons.home_outlined),
                   selectedIcon: Icon(Icons.home_rounded),
                   label: 'Bosh',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.school_outlined),
+                  selectedIcon: Icon(Icons.school_rounded),
+                  label: 'Darslar',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.menu_book_outlined),
+                  selectedIcon: Icon(Icons.menu_book_rounded),
+                  label: 'Lug\'at',
                 ),
                 NavigationDestination(
                   icon: Icon(Icons.bar_chart_outlined),

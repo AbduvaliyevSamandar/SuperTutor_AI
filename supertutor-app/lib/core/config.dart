@@ -15,4 +15,8 @@ class AppConfig {
       supabaseAnonKey.isNotEmpty &&
       !supabaseUrl.contains('your-project') &&
       supabaseAnonKey != 'replace_me';
+
+  /// Where Supabase should redirect after Google OAuth.
+  /// Mobile uses a custom scheme handled by supabase_flutter; web returns to /.
+  static String? get googleRedirectUrl => null;
 }

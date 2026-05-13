@@ -183,6 +183,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
               const SizedBox(height: 18),
               DuoButton(
+                label: 'Google bilan kirish',
+                variant: DuoButtonVariant.outline,
+                icon: Icons.account_circle_outlined,
+                onPressed: state.loading
+                    ? null
+                    : () => ref
+                        .read(authControllerProvider.notifier)
+                        .signInWithGoogle(),
+              ),
+              const SizedBox(height: 10),
+              DuoButton(
                 label: 'Mehmon sifatida davom etish',
                 variant: DuoButtonVariant.neutral,
                 icon: Icons.person_outline,

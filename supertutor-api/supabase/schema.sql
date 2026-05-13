@@ -109,6 +109,49 @@ create trigger on_session_started
   after insert on public.sessions
   for each row execute function public.update_streak_on_session();
 
+-- 6a. Vocabulary entries (saved words)
+create table if not exists public.vocabulary_entries (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  word text not null,
+  language text not null,
+  translation_uz text,
+  definition text,
+  saved_at timestamptz default now(),
+  last_reviewed_at timestamptz,
+  unique (user_id, word, language)
+);
+
+alter table public.vocabulary_entries enable row level security;
+drop policy if exists "vocab self all" on public.vocabulary_entries;
+create policy "vocab self all"
+  on public.vocabulary_entries for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+-- 6b. Quiz results
+create table if not exists public.quiz_results (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  subject text not null,
+  level text,
+  score int default 0,
+  total int default 0,
+  percentage int default 0,
+  weak_topics text[] default '{}',
+  created_at timestamptz default now()
+);
+
+create index if not exists quiz_results_user_idx
+  on public.quiz_results(user_id, created_at desc);
+
+alter table public.quiz_results enable row level security;
+drop policy if exists "quiz self all" on public.quiz_results;
+create policy "quiz self all"
+  on public.quiz_results for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
 -- 6. Aggregate view for dashboard
 create or replace view public.user_stats as
 select
