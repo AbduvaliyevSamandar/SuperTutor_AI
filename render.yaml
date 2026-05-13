@@ -1,19 +1,22 @@
-# Render Blueprint — deploys backend + Flutter web from this repo.
-# https://render.com/docs/blueprint-spec
+# Render Blueprint
+# Docs: https://render.com/docs/blueprint-spec
 #
-# After connecting this repo to Render:
-#   Dashboard -> New -> Blueprint -> pick this repo -> Apply.
-# Then set the `sync: false` env vars from the Render dashboard.
+# Setup:
+#   1) Install Render GitHub App on this repo:
+#      https://github.com/apps/render/installations/new
+#   2) Render Dashboard -> New -> Blueprint -> pick repo -> Apply
+#   3) Fill `sync: false` env vars in each service's Environment tab
 
 services:
-  # ----- Backend (FastAPI + Groq/OpenAI/Gemini cascade) -----
+  # ---------- Backend (FastAPI + Groq/OpenAI/Gemini cascade) ----------
   - type: web
     name: supertutor-api
-    runtime: docker
+    env: docker
     plan: free
     region: singapore
     rootDir: supertutor-api
     dockerfilePath: ./Dockerfile
+    dockerContext: .
     healthCheckPath: /api/v1/health
     envVars:
       - key: APP_ENV
@@ -43,18 +46,14 @@ services:
       - key: SUPABASE_SERVICE_KEY
         sync: false
 
-  # ----- Frontend (Flutter Web static site) -----
+  # ---------- Frontend (Flutter Web static site) ----------
   - type: web
     name: supertutor-web
-    runtime: static
+    env: static
     plan: free
     rootDir: supertutor-app
-    buildCommand: ./build_render.sh
-    staticPublishPath: ./build/web
-    headers:
-      - path: /*
-        name: Cache-Control
-        value: public, max-age=0, must-revalidate
+    buildCommand: bash build_render.sh
+    staticPublishPath: build/web
     routes:
       - type: rewrite
         source: /*
