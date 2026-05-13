@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme.dart';
 import '../../widgets/duo_button.dart';
+import '../../widgets/sound_effects.dart';
+import '../auth/auth_controller.dart';
+import '../currency/currency_controller.dart';
 import 'quiz_models.dart';
 import 'quiz_repository.dart';
 import 'quiz_result_screen.dart';
@@ -56,10 +59,44 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
       final result = await ref
           .read(quizRepositoryProvider)
           .submit(quiz: _quiz!, answers: _answers);
+
+      // Pre-result sound for immediate feedback
+      if (result.percentage >= 50) {
+        SoundEffects.correct();
+      } else {
+        SoundEffects.wrong();
+      }
+
+      int xpEarned = 0;
+      bool goalReached = false;
+      final authed = ref.read(authControllerProvider).isAuthenticated;
+      if (authed) {
+        final wrong = result.total - result.score;
+        xpEarned = result.score * 5;
+        final ctrl = ref.read(currencyControllerProvider.notifier);
+        if (xpEarned > 0) {
+          try {
+            goalReached = await ctrl.awardXp(xpEarned, reason: 'quiz');
+          } catch (_) {}
+        }
+        for (var i = 0; i < wrong; i++) {
+          try {
+            final stillAlive = await ctrl.loseHeart();
+            if (!stillAlive) break;
+          } catch (_) {
+            break;
+          }
+        }
+      }
+
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (_) => QuizResultScreen(result: result),
+          builder: (_) => QuizResultScreen(
+            result: result,
+            xpEarned: xpEarned,
+            dailyGoalReached: goalReached,
+          ),
         ),
       );
     } catch (e) {

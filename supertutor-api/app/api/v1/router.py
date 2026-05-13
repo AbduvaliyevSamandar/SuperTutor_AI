@@ -2,6 +2,7 @@ from fastapi import APIRouter
 from app.api.v1.endpoints import (
     auth,
     chat,
+    currency,
     dictionary,
     health,
     quiz,
@@ -23,3 +24,4 @@ api_router.include_router(sessions.router, tags=["sessions"])
 api_router.include_router(stats.router, tags=["stats"])
 api_router.include_router(dictionary.router, tags=["dictionary"])
 api_router.include_router(quiz.router, tags=["quiz"])
+api_router.include_router(currency.router, tags=["currency"])

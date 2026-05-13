@@ -4,9 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme.dart';
+import '../../widgets/duo_button.dart';
 import '../../widgets/stat_chip.dart';
 import '../../widgets/streak_banner.dart';
 import '../auth/auth_controller.dart';
+import '../currency/currency_controller.dart';
 import '../dashboard/stats_repository.dart';
 
 enum _NodeStatus { completed, current, locked }
@@ -47,23 +49,23 @@ class SkillTreeScreen extends ConsumerWidget {
     final streak = statsAsync?.maybeWhen(
             data: (s) => s.streakDays, orElse: () => 0) ??
         0;
-    final totalMin =
-        statsAsync?.maybeWhen(data: (s) => s.totalSeconds ~/ 60, orElse: () => 0) ??
-            0;
+    final currency = ref.watch(currencyControllerProvider);
+    final hearts = currency?.hearts ?? 5;
+    final xp = currency?.xpTotal ?? 0;
 
     return Scaffold(
       appBar: AppBar(
-        titleSpacing: 20,
+        titleSpacing: 16,
         title: Row(
           children: [
-            Image.asset('assets/icon/icon_fg.png', width: 36, height: 36),
-            const SizedBox(width: 8),
+            Image.asset('assets/icon/icon_fg.png', width: 32, height: 32),
+            const SizedBox(width: 6),
             Text('SuperTutor', style: Theme.of(context).textTheme.titleLarge),
           ],
         ),
         actions: [
           Padding(
-            padding: const EdgeInsets.only(right: 8),
+            padding: const EdgeInsets.only(right: 6),
             child: StatChip(
               icon: Icons.local_fire_department_rounded,
               color: AppColors.fire,
@@ -71,33 +73,45 @@ class SkillTreeScreen extends ConsumerWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.only(right: 8),
+            padding: const EdgeInsets.only(right: 6),
             child: StatChip(
               icon: Icons.bolt_rounded,
               color: AppColors.gold,
-              value: '$totalMin',
-              label: 'min',
+              value: '$xp',
             ),
           ),
           Padding(
             padding: const EdgeInsets.only(right: 12),
-            child: StatChip(
-              icon: Icons.favorite_rounded,
-              color: AppColors.heart,
-              value: '5',
+            child: GestureDetector(
+              onTap: hearts == 0 && auth.isAuthenticated
+                  ? () => _showHeartsModal(context, ref)
+                  : null,
+              child: StatChip(
+                icon: Icons.favorite_rounded,
+                color: AppColors.heart,
+                value: '$hearts',
+              ),
             ),
           ),
         ],
       ),
       body: RefreshIndicator(
         onRefresh: () async {
-          if (auth.isAuthenticated) ref.invalidate(myStatsProvider);
+          if (auth.isAuthenticated) {
+            ref.invalidate(myStatsProvider);
+            await ref.read(currencyControllerProvider.notifier).refresh();
+          }
         },
         child: ListView(
           padding: const EdgeInsets.fromLTRB(0, 8, 0, 32),
           children: [
+            if (auth.isAuthenticated && currency != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+                child: _DailyGoalCard(currency: currency, ref: ref),
+              ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
               child: StreakBanner(
                 days: streak,
                 cta: 'Boshlash',
@@ -127,7 +141,13 @@ class SkillTreeScreen extends ConsumerWidget {
                 index: i,
                 onTap: _nodes[i].status == _NodeStatus.locked
                     ? null
-                    : () => context.push('/chat/${_nodes[i].subject}'),
+                    : () {
+                        if (hearts <= 0 && auth.isAuthenticated) {
+                          _showHeartsModal(context, ref);
+                        } else {
+                          context.push('/chat/${_nodes[i].subject}');
+                        }
+                      },
               );
             }),
             const SizedBox(height: 24),
@@ -271,4 +291,207 @@ class _SectionFooter extends StatelessWidget {
       ),
     );
   }
+}
+
+class _DailyGoalCard extends StatelessWidget {
+  final dynamic currency;
+  final WidgetRef ref;
+  const _DailyGoalCard({required this.currency, required this.ref});
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = (currency.dailyProgress as double).clamp(0.0, 1.0);
+    final reached = currency.dailyGoalReached as bool;
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: () => _showSetGoalSheet(context, ref, currency.dailyTargetXp),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border, width: 2),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(reached ? '🎉' : '🎯',
+                    style: const TextStyle(fontSize: 22)),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text('Kunlik maqsad',
+                      style: TextStyle(
+                          fontWeight: FontWeight.w800, fontSize: 15)),
+                ),
+                Text(
+                  '${currency.dailyEarnedXp} / ${currency.dailyTargetXp} XP',
+                  style: TextStyle(
+                      color: reached ? AppColors.primary : AppColors.inkLight,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 10,
+                backgroundColor: AppColors.border,
+                valueColor: AlwaysStoppedAnimation(
+                  reached ? AppColors.primary : AppColors.gold,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+void _showSetGoalSheet(BuildContext context, WidgetRef ref, int currentTarget) {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: Colors.transparent,
+    builder: (ctx) => SafeArea(
+      child: Container(
+        margin: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+            color: Colors.white, borderRadius: BorderRadius.circular(20)),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Kunlik maqsad tanlang',
+                style: Theme.of(ctx).textTheme.titleLarge),
+            const SizedBox(height: 4),
+            const Text('Har kuni shu XP miqdorini olishingiz kerak',
+                style: TextStyle(color: AppColors.inkLight)),
+            const SizedBox(height: 16),
+            for (final t in [10, 20, 50, 100])
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    await ref
+                        .read(currencyControllerProvider.notifier)
+                        .setGoal(t);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: currentTarget == t
+                          ? AppColors.primary.withValues(alpha: 0.12)
+                          : AppColors.surface,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                          color: currentTarget == t
+                              ? AppColors.primary
+                              : AppColors.border,
+                          width: 2),
+                    ),
+                    child: Row(
+                      children: [
+                        Text(
+                          t == 10
+                              ? '🌱'
+                              : t == 20
+                                  ? '⚡'
+                                  : t == 50
+                                      ? '🔥'
+                                      : '🚀',
+                          style: const TextStyle(fontSize: 24),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text('$t XP',
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w800, fontSize: 16)),
+                        ),
+                        Text(
+                          t == 10
+                              ? 'Yengil'
+                              : t == 20
+                                  ? 'Oddiy'
+                                  : t == 50
+                                      ? 'Kuchli'
+                                      : 'Pro',
+                          style: const TextStyle(
+                              color: AppColors.inkLight,
+                              fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+void _showHeartsModal(BuildContext context, WidgetRef ref) {
+  final currency = ref.read(currencyControllerProvider);
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: Colors.transparent,
+    isScrollControlled: true,
+    builder: (ctx) => SafeArea(
+      child: Container(
+        margin: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+            color: Colors.white, borderRadius: BorderRadius.circular(20)),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('💔', style: TextStyle(fontSize: 56)),
+            const SizedBox(height: 8),
+            Text('Yuraklar tugadi',
+                style: Theme.of(ctx).textTheme.headlineMedium),
+            const SizedBox(height: 8),
+            Text(
+              currency == null
+                  ? 'Biroz dam oling'
+                  : 'Keyingi yurak ${(currency.nextHeartInSeconds / 60).ceil()} daqiqada.',
+              style: const TextStyle(
+                  color: AppColors.inkLight, fontWeight: FontWeight.w600),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            DuoButton(
+              label: '350 💎 — Yuraklarni to\'ldirish',
+              variant: DuoButtonVariant.gold,
+              onPressed: () async {
+                Navigator.pop(ctx);
+                final ok = await ref
+                    .read(currencyControllerProvider.notifier)
+                    .refillHearts();
+                if (!ok && context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Gemma yetarli emas')),
+                  );
+                }
+              },
+            ),
+            const SizedBox(height: 8),
+            DuoButton(
+              label: 'Yopish',
+              variant: DuoButtonVariant.outline,
+              onPressed: () => Navigator.pop(ctx),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }

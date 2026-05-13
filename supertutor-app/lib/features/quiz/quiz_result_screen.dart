@@ -1,12 +1,54 @@
+import 'dart:math' as math;
+import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/theme.dart';
 import '../../widgets/duo_button.dart';
+import '../../widgets/sound_effects.dart';
 import 'quiz_models.dart';
 
-class QuizResultScreen extends StatelessWidget {
+class QuizResultScreen extends StatefulWidget {
   final QuizResultSummary result;
-  const QuizResultScreen({super.key, required this.result});
+  final int xpEarned;
+  final bool dailyGoalReached;
+
+  const QuizResultScreen({
+    super.key,
+    required this.result,
+    this.xpEarned = 0,
+    this.dailyGoalReached = false,
+  });
+
+  @override
+  State<QuizResultScreen> createState() => _QuizResultScreenState();
+}
+
+class _QuizResultScreenState extends State<QuizResultScreen> {
+  late final ConfettiController _confetti;
+
+  @override
+  void initState() {
+    super.initState();
+    _confetti = ConfettiController(duration: const Duration(seconds: 2));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (widget.result.percentage >= 80) {
+        _confetti.play();
+        SoundEffects.correct();
+      } else if (widget.result.percentage >= 50) {
+        SoundEffects.correct();
+      } else {
+        SoundEffects.wrong();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _confetti.dispose();
+    super.dispose();
+  }
+
+  QuizResultSummary get result => widget.result;
 
   Color _scoreColor() {
     if (result.percentage >= 80) return AppColors.primary;
@@ -37,9 +79,29 @@ class QuizResultScreen extends StatelessWidget {
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
+      body: Stack(
         children: [
+          Align(
+            alignment: Alignment.topCenter,
+            child: ConfettiWidget(
+              confettiController: _confetti,
+              blastDirection: math.pi / 2,
+              maxBlastForce: 20,
+              minBlastForce: 8,
+              emissionFrequency: 0.04,
+              numberOfParticles: 25,
+              gravity: 0.25,
+              colors: const [
+                AppColors.primary,
+                AppColors.gold,
+                AppColors.secondary,
+                AppColors.heart,
+              ],
+            ),
+          ),
+          ListView(
+            padding: const EdgeInsets.all(20),
+            children: [
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
@@ -88,6 +150,34 @@ class QuizResultScreen extends StatelessWidget {
                     fontSize: 14,
                   ),
                 ),
+                if (widget.xpEarned > 0) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.22),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '+${widget.xpEarned} XP',
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16),
+                    ),
+                  ),
+                ],
+                if (widget.dailyGoalReached) ...[
+                  const SizedBox(height: 8),
+                  const Text(
+                    '🎯 Kunlik maqsadga erishdingiz! +5 💎',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13),
+                  ),
+                ],
               ],
             ),
           ),
@@ -229,6 +319,8 @@ class QuizResultScreen extends StatelessWidget {
           DuoButton(
             label: 'Tugatish',
             onPressed: () => Navigator.of(context).pop(),
+          ),
+            ],
           ),
         ],
       ),
