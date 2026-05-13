@@ -1,14 +1,31 @@
-# Render Blueprint
-# Docs: https://render.com/docs/blueprint-spec
+# Render Blueprint - bitta apply'da ham backend, ham frontend deploy qilinadi.
+# Har keyingi `git push origin main` -> ikkala servis ham avtomatik qayta deploy.
 #
-# Setup:
-#   1) Install Render GitHub App on this repo:
-#      https://github.com/apps/render/installations/new
-#   2) Render Dashboard -> New -> Blueprint -> pick repo -> Apply
-#   3) Fill `sync: false` env vars in each service's Environment tab
+# Setup (bir martalik):
+#   1) https://github.com/apps/render/installations/new
+#      -> SuperTutor_AI repo'ga ruxsat bering
+#   2) Render Dashboard -> New + -> Blueprint -> pick repo -> Apply
+#   3) Env Group "supertutor-secrets" ga sirlarni bir marta kiritasiz
+#      (har servis uchun alohida emas - bitta joydan!)
+
+envVarGroups:
+  - name: supertutor-secrets
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
 
 services:
-  # ---------- Backend (FastAPI + Groq/OpenAI/Gemini cascade) ----------
+  # ---------- Backend: FastAPI + Groq/OpenAI/Gemini cascade ----------
   - type: web
     name: supertutor-api
     env: docker
@@ -18,35 +35,25 @@ services:
     dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /api/v1/health
+    autoDeploy: true
     envVars:
+      - fromGroup: supertutor-secrets
       - key: APP_ENV
         value: production
       - key: CORS_ORIGINS
         value: "*"
-      - key: GROQ_API_KEY
-        sync: false
       - key: GROQ_LLM_MODEL
         value: llama-3.3-70b-versatile
       - key: GROQ_STT_MODEL
         value: whisper-large-v3
-      - key: OPENAI_API_KEY
-        sync: false
       - key: OPENAI_LLM_MODEL
         value: gpt-4o-mini
       - key: OPENAI_STT_MODEL
         value: whisper-1
-      - key: GEMINI_API_KEY
-        sync: false
       - key: GEMINI_MODEL
         value: gemini-2.0-flash
-      - key: SUPABASE_URL
-        sync: false
-      - key: SUPABASE_ANON_KEY
-        sync: false
-      - key: SUPABASE_SERVICE_KEY
-        sync: false
 
-  # ---------- Frontend (Flutter Web static site) ----------
+  # ---------- Frontend: Flutter Web (static, never sleeps) ----------
   - type: web
     name: supertutor-web
     env: static
@@ -54,17 +61,17 @@ services:
     rootDir: supertutor-app
     buildCommand: bash build_render.sh
     staticPublishPath: build/web
+    autoDeploy: true
     routes:
       - type: rewrite
         source: /*
         destination: /index.html
     envVars:
+      # API_BASE_URL avtomatik backend host'idan olinadi
       - key: API_BASE_URL
         fromService:
           type: web
           name: supertutor-api
           property: host
-      - key: SUPABASE_URL
-        sync: false
-      - key: SUPABASE_ANON_KEY
-        sync: false
+      # Bir marta kiritilgan SUPABASE qiymatlarini guruhdan oladi
+      - fromGroup: supertutor-secrets
