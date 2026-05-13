@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/config.dart';
 import 'core/router.dart';
 import 'core/theme.dart';
+import 'features/onboarding/onboarding_screen.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  final binding = WidgetsFlutterBinding.ensureInitialized();
+  FlutterNativeSplash.preserve(widgetsBinding: binding);
   try {
     await dotenv.load(fileName: '.env');
   } catch (_) {
@@ -20,15 +23,22 @@ Future<void> main() async {
       anonKey: AppConfig.supabaseAnonKey,
     );
   }
-  runApp(const ProviderScope(child: SuperTutorApp()));
+  final onboarded = await onboardingDone();
+  FlutterNativeSplash.remove();
+  runApp(ProviderScope(child: SuperTutorApp(onboarded: onboarded)));
 }
 
 class SuperTutorApp extends ConsumerWidget {
-  const SuperTutorApp({super.key});
+  final bool onboarded;
+  const SuperTutorApp({super.key, required this.onboarded});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
+    if (!onboarded) {
+      // Override initial path to /onboarding on first launch.
+      router.go('/onboarding');
+    }
     return MaterialApp.router(
       title: 'SuperTutor AI',
       debugShowCheckedModeBanner: false,

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme.dart';
 import '../dashboard/dashboard_screen.dart';
 import '../dictionary/dictionary_screen.dart';
-import '../home/home_screen.dart';
+import '../home/skill_tree_screen.dart';
 import '../learn/learn_screen.dart';
 import '../profile/profile_screen.dart';
 
@@ -18,7 +18,7 @@ class _HomeShellState extends State<HomeShell> {
   int _index = 0;
 
   static const _pages = [
-    HomeScreen(),
+    SkillTreeScreen(),
     LearnScreen(),
     DictionaryScreen(),
     DashboardScreen(),

@@ -152,6 +152,78 @@ create policy "quiz self all"
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
+-- 6c. Gamification: hearts, XP, gems, daily goal
+create table if not exists public.user_currency (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  hearts int default 5,
+  max_hearts int default 5,
+  xp_total int default 0,
+  gems int default 50,
+  streak_freezes int default 0,
+  last_heart_refill_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+alter table public.user_currency enable row level security;
+drop policy if exists "currency self all" on public.user_currency;
+create policy "currency self all"
+  on public.user_currency for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+create table if not exists public.daily_goals (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  date date not null default current_date,
+  target_xp int not null default 20,
+  earned_xp int not null default 0,
+  primary key (user_id, date)
+);
+
+alter table public.daily_goals enable row level security;
+drop policy if exists "daily self all" on public.daily_goals;
+create policy "daily self all"
+  on public.daily_goals for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+create table if not exists public.achievements (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  badge_code text not null,
+  earned_at timestamptz default now(),
+  unique (user_id, badge_code)
+);
+
+alter table public.achievements enable row level security;
+drop policy if exists "ach self all" on public.achievements;
+create policy "ach self all"
+  on public.achievements for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+-- Auto-create currency row on signup
+create or replace function public.handle_new_currency()
+returns trigger
+language plpgsql
+security definer
+as $$
+begin
+  insert into public.user_currency (user_id) values (new.id)
+  on conflict (user_id) do nothing;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_profile_create_currency on public.profiles;
+create trigger on_profile_create_currency
+  after insert on public.profiles
+  for each row execute function public.handle_new_currency();
+
+-- Backfill: every existing profile gets a currency row
+insert into public.user_currency (user_id)
+  select user_id from public.profiles
+  on conflict (user_id) do nothing;
+
 -- 6. Aggregate view for dashboard
 create or replace view public.user_stats as
 select
