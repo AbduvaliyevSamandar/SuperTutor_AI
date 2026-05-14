@@ -12,6 +12,7 @@ from app.api.v1.endpoints import (
     ielts,
     leaderboard,
     listening_test as listening_test_mod,
+    mock_test,
     pronunciation,
     quiz,
     reading,
@@ -46,6 +47,7 @@ api_router.include_router(ielts.router, tags=["ielts"])
 api_router.include_router(writing.router, tags=["ielts"])
 api_router.include_router(reading.router, tags=["ielts"])
 api_router.include_router(listening_test_mod.router, tags=["ielts"])
+api_router.include_router(mock_test.router, tags=["ielts"])
 api_router.include_router(stories.router, tags=["stories"])
 api_router.include_router(daily_lesson.router, tags=["daily"])
 api_router.include_router(friends.router, tags=["social"])

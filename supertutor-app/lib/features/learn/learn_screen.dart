@@ -8,6 +8,7 @@ import '../exercises/listening_screen.dart';
 import '../friends/friends_screen.dart';
 import '../grammar/grammar_screen.dart';
 import '../ielts/ielts_listening_screen.dart';
+import '../ielts/ielts_mock_test_screen.dart';
 import '../ielts/ielts_reading_screen.dart';
 import '../ielts/ielts_speaking_screen.dart';
 import '../ielts/ielts_writing_screen.dart';
@@ -155,6 +156,16 @@ class LearnScreen extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 10),
+          _IeltsBanner(
+            emoji: '🏆',
+            title: 'IELTS Mock Test (to\'liq)',
+            subtitle: '4 ta bo\'lim · umumiy band score',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                  builder: (_) => const IeltsMockTestScreen()),
+            ),
           ),
           const SizedBox(height: 10),
           _IeltsBanner(

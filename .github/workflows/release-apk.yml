@@ -1,0 +1,59 @@
+name: Release Android APK
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.38.3'
+
+      - name: Configure .env
+        working-directory: supertutor-app
+        run: |
+          cat > .env <<EOF
+          API_BASE_URL=${{ secrets.API_BASE_URL || 'https://supertutor-api.onrender.com' }}
+          SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+          EOF
+
+      - name: Generate launcher icons + splash
+        working-directory: supertutor-app
+        run: |
+          flutter pub get
+          dart run flutter_launcher_icons || true
+          dart run flutter_native_splash:create || true
+
+      - name: Build release APK
+        working-directory: supertutor-app
+        run: flutter build apk --release
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release.apk
+          path: supertutor-app/build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: supertutor-app/build/app/outputs/flutter-apk/app-release.apk
+          body: |
+            Avtomatik chiqarilgan release. Yangi versiya APK ni yuklab oling.
+
+            ## O'rnatish (Android)
+            1. APK'ni yuklab oling
+            2. Sozlamalar → Ilovalar → "Noma'lum manbalardan o'rnatish" yoqing
+            3. APK fayl ustiga teging
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
