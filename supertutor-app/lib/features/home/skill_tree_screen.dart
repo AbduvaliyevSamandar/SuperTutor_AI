@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/theme.dart';
 import '../../widgets/duo_button.dart';
+import '../../widgets/haptics.dart';
 import '../../widgets/stat_chip.dart';
 import '../../widgets/streak_banner.dart';
 import '../auth/auth_controller.dart';
@@ -201,7 +202,7 @@ class SkillTreeScreen extends ConsumerWidget {
   }
 }
 
-class _SkillNode extends StatelessWidget {
+class _SkillNode extends ConsumerWidget {
   final _LessonNode node;
   final int index;
   final _NodeStatus status;
@@ -235,7 +236,7 @@ class _SkillNode extends StatelessWidget {
       };
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     // Sinusoidal x-offset to wind left-right.
     final dx = math.sin(index * 0.9) * _amplitude;
     return Padding(
@@ -246,7 +247,10 @@ class _SkillNode extends StatelessWidget {
           child: Column(
             children: [
               GestureDetector(
-                onTap: onTap,
+                onTap: () {
+                  Haptics.tap();
+                  onTap?.call();
+                },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
                   width: 86,

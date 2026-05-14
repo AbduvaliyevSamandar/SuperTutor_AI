@@ -1,57 +1,64 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/api_client.dart';
 import '../../core/theme.dart';
+import '../../widgets/shimmer_box.dart';
 
-class WordOfTheDayCard extends StatelessWidget {
+final wordOfDayProvider =
+    FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
+  final r = await ref.read(dioProvider).get('/word-of-day');
+  return Map<String, dynamic>.from(r.data);
+});
+
+class WordOfTheDayCard extends ConsumerWidget {
   const WordOfTheDayCard({super.key});
 
-  static const _words = [
-    ('resilient', 'noun', 'chidamli, tezda tiklanadigan',
+  // Fallback list if backend unavailable (offline / slow first call).
+  static const _fallback = [
+    ('resilient', 'adj', 'chidamli',
         'She is resilient — she bounces back from any setback.'),
     ('curiosity', 'noun', 'qiziquvchanlik',
         'Curiosity is the spark of every great discovery.'),
     ('grateful', 'adj', 'minnatdor',
         'I\'m grateful for the chance to learn every day.'),
-    ('endeavor', 'noun', 'urinish, harakat',
+    ('endeavor', 'noun', 'urinish',
         'Learning a language is a lifelong endeavor.'),
     ('eloquent', 'adj', 'ravon gapiruvchi',
-        'He gave an eloquent speech that moved everyone.'),
-    ('insight', 'noun', 'tushuncha, aniq fahmlash',
-        'This book offers deep insights into human nature.'),
-    ('ambition', 'noun', 'maqsad, intilish',
-        'Her ambition is to become a doctor.'),
-    ('perspective', 'noun', 'qarash, nuqtai nazar',
-        'Travel changes your perspective on life.'),
-    ('genuine', 'adj', 'samimiy, asl',
-        'Her smile is always genuine.'),
-    ('overcome', 'verb', 'yengib o\'tmoq',
-        'She overcame all her fears.'),
-    ('dedicate', 'verb', 'bag\'ishlamoq',
-        'I dedicate one hour daily to study.'),
-    ('reflect', 'verb', 'fikr yuritmoq',
-        'Take time to reflect on what you learned today.'),
-    ('vivid', 'adj', 'jonli, yorqin',
-        'The painting was filled with vivid colors.'),
-    ('humble', 'adj', 'kamtar',
-        'A truly wise person is always humble.'),
-    ('wander', 'verb', 'sayr qilmoq, daydib yurmoq',
-        'I love to wander through old streets.'),
-    ('quiet', 'adj', 'sokin, tinch',
-        'The library is a quiet place to study.'),
-    ('passion', 'noun', 'ehtiros, sevgi',
-        'Find your passion and follow it.'),
-    ('inspire', 'verb', 'ilhomlantirmoq',
-        'Great teachers inspire their students.'),
-    ('grace', 'noun', 'nazokat, latif',
-        'She handled the situation with grace.'),
-    ('discover', 'verb', 'kashf qilmoq',
-        'You discover new words every day with SuperTutor.'),
+        'He gave an eloquent speech.'),
   ];
 
   @override
-  Widget build(BuildContext context) {
-    final i = DateTime.now().difference(DateTime(2026, 1, 1)).inDays % _words.length;
-    final (word, pos, uz, example) = _words[i];
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(wordOfDayProvider);
+    return async.when(
+      loading: () => _wrap(child: const _SkeletonWord()),
+      error: (_, _) {
+        final i =
+            DateTime.now().difference(DateTime(2026, 1, 1)).inDays % _fallback.length;
+        final (w, p, uz, ex) = _fallback[i];
+        return _wrap(
+          child: _Body(
+              word: w,
+              partOfSpeech: p,
+              uz: uz,
+              definition: null,
+              example: ex),
+        );
+      },
+      data: (data) => _wrap(
+        child: _Body(
+          word: data['word'] ?? '',
+          partOfSpeech: data['part_of_speech'] ?? '',
+          uz: data['translation_uz'] ?? '',
+          definition: data['definition_en'],
+          example: data['example'] ?? '',
+        ),
+      ),
+    );
+  }
+
+  Widget _wrap({required Widget child}) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -69,44 +76,109 @@ class WordOfTheDayCard extends StatelessWidget {
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: const [
-              Text('📖', style: TextStyle(fontSize: 22)),
-              SizedBox(width: 6),
-              Text('KUNNING SO\'ZI',
-                  style: TextStyle(
-                      color: AppColors.ink,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.8,
-                      fontSize: 11)),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(word,
+      child: child,
+    );
+  }
+}
+
+class _SkeletonWord extends StatelessWidget {
+  const _SkeletonWord();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: const [
+        Row(children: [
+          Text('📖', style: TextStyle(fontSize: 22)),
+          SizedBox(width: 6),
+          Text('KUNNING SO\'ZI',
+              style: TextStyle(
+                  color: AppColors.ink,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.8,
+                  fontSize: 11)),
+        ]),
+        SizedBox(height: 10),
+        ShimmerBox(height: 26, width: 140),
+        SizedBox(height: 8),
+        ShimmerBox(height: 16, width: 200),
+        SizedBox(height: 6),
+        ShimmerBox(height: 14, width: 280),
+      ],
+    );
+  }
+}
+
+class _Body extends StatelessWidget {
+  final String word;
+  final String partOfSpeech;
+  final String uz;
+  final String? definition;
+  final String example;
+  const _Body({
+    required this.word,
+    required this.partOfSpeech,
+    required this.uz,
+    required this.definition,
+    required this.example,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: const [
+            Text('📖', style: TextStyle(fontSize: 22)),
+            SizedBox(width: 6),
+            Text('KUNNING SO\'ZI',
+                style: TextStyle(
+                    color: AppColors.ink,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.8,
+                    fontSize: 11)),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Flexible(
+              child: Text(word,
                   style: const TextStyle(
-                      fontSize: 26, fontWeight: FontWeight.w800)),
-              const SizedBox(width: 6),
+                      fontSize: 26, fontWeight: FontWeight.w800),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis),
+            ),
+            const SizedBox(width: 6),
+            if (partOfSpeech.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(bottom: 4),
-                child: Text('· $pos',
+                child: Text('· $partOfSpeech',
                     style: const TextStyle(
                         color: AppColors.inkLight,
                         fontWeight: FontWeight.w600)),
               ),
-            ],
-          ),
-          const SizedBox(height: 4),
+          ],
+        ),
+        const SizedBox(height: 4),
+        if (uz.isNotEmpty)
           Text(uz,
               style: const TextStyle(
                   color: AppColors.ink,
                   fontWeight: FontWeight.w700,
                   fontSize: 15)),
+        if (definition != null && definition!.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Text(definition!,
+              style: const TextStyle(
+                  color: AppColors.inkLight,
+                  fontWeight: FontWeight.w500,
+                  fontSize: 13)),
+        ],
+        if (example.isNotEmpty) ...[
           const SizedBox(height: 6),
           Text('"$example"',
               style: const TextStyle(
@@ -114,25 +186,8 @@ class WordOfTheDayCard extends StatelessWidget {
                   fontWeight: FontWeight.w500,
                   fontStyle: FontStyle.italic,
                   height: 1.3)),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton.icon(
-              icon: const Icon(Icons.bookmark_border, size: 18),
-              label: const Text('Lug\'atda batafsil',
-                  style: TextStyle(fontWeight: FontWeight.w800)),
-              style: TextButton.styleFrom(foregroundColor: AppColors.ink),
-              onPressed: () {
-                // Note: Dictionary lookup happens within shell already.
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                      content: Text('"Lug\'at" tabidan "$word" so\'zini qidiring')),
-                );
-              },
-            ),
-          ),
         ],
-      ),
+      ],
     );
   }
 }

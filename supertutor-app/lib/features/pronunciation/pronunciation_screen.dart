@@ -10,19 +10,45 @@ import 'package:record/record.dart';
 import '../../core/api_client.dart';
 import '../../core/theme.dart';
 import '../../widgets/duo_button.dart';
+import '../../widgets/haptics.dart';
 import '../../widgets/sound_effects.dart';
 import '../auth/auth_controller.dart';
 import '../currency/currency_controller.dart';
 
 const _sentences = [
+  // A1-A2 (short, common)
   'I would like a cup of coffee, please.',
   'Where is the nearest bus station?',
   'The weather is beautiful today.',
   'Can you help me find my passport?',
-  'Learning a new language takes time and practice.',
   'I usually wake up at seven in the morning.',
-  'She has been studying English for two years.',
   'Could you repeat that more slowly, please?',
+  'My name is Sam and I am from Uzbekistan.',
+  'How much does this book cost?',
+  'I want to learn English as fast as possible.',
+  'What time does the museum open tomorrow?',
+  // B1 (medium)
+  'Learning a new language takes time and practice.',
+  'She has been studying English for two years.',
+  'If it rains tomorrow, I will stay at home.',
+  'The train was delayed because of heavy snow.',
+  'I am looking forward to meeting your family.',
+  'Could you tell me the best way to the airport?',
+  'I think reading books is more useful than watching TV.',
+  'My favorite season is autumn because it is colorful.',
+  'We have to finish this project before next Friday.',
+  'I have lived in this city for almost five years.',
+  // B2 (longer, complex)
+  'Despite the difficulties, she managed to complete the marathon.',
+  'The new policy is expected to significantly reduce traffic congestion.',
+  'Although he was tired, he kept working until the project was done.',
+  'Scientists are constantly searching for cleaner sources of energy.',
+  'If I had known about the meeting, I would have arrived earlier.',
+  'The committee decided to postpone the decision until further notice.',
+  'Despite numerous setbacks, the research team eventually succeeded.',
+  'Many young people prefer flexible jobs that allow remote working.',
+  'The author argues that technology has fundamentally changed education.',
+  'A balanced diet combined with regular exercise improves overall health.',
 ];
 
 class PronunciationScreen extends ConsumerStatefulWidget {
@@ -50,6 +76,7 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen> {
   }
 
   Future<void> _toggleRecord() async {
+    Haptics.tap();
     if (_recording) {
       final path = await _recorder.stop();
       setState(() => _recording = false);
@@ -77,7 +104,9 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen> {
   }
 
   Future<List<int>> _readRecording(String pathOrUrl) async {
-    if (kIsWeb || pathOrUrl.startsWith('blob:') || pathOrUrl.startsWith('http')) {
+    if (kIsWeb ||
+        pathOrUrl.startsWith('blob:') ||
+        pathOrUrl.startsWith('http')) {
       final dio = Dio();
       final r = await dio.get<List<int>>(pathOrUrl,
           options: Options(responseType: ResponseType.bytes));
@@ -102,13 +131,18 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen> {
       final score = data['score'] as int;
       if (score >= 80) {
         SoundEffects.correct();
+        Haptics.success();
         if (ref.read(authControllerProvider).isAuthenticated) {
-          await ref.read(currencyControllerProvider.notifier).awardXp(6, reason: 'pronunciation');
+          await ref
+              .read(currencyControllerProvider.notifier)
+              .awardXp(6, reason: 'pronunciation');
         }
       } else if (score >= 50) {
         SoundEffects.correct();
+        Haptics.success();
       } else {
         SoundEffects.wrong();
+        Haptics.error();
       }
     } catch (e) {
       setState(() => _error = e.toString());
@@ -118,6 +152,7 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen> {
   }
 
   void _next() {
+    Haptics.tap();
     setState(() {
       _index += 1;
       _result = null;
@@ -125,20 +160,50 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen> {
     });
   }
 
+  String _levelLabel(int i) {
+    if (i < 10) return 'A1-A2';
+    if (i < 20) return 'B1';
+    return 'B2';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Talaffuz mashqi')),
+      appBar: AppBar(
+        title: const Text('Talaffuz mashqi'),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: Center(
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.secondary.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(_levelLabel(_index % _sentences.length),
+                    style: const TextStyle(
+                        color: AppColors.secondary,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12)),
+              ),
+            ),
+          ),
+        ],
+      ),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
             const Text('🎙️', style: TextStyle(fontSize: 56)),
             const SizedBox(height: 8),
-            const Text('Ushbu jumlani aniq aytib bering',
-                style: TextStyle(
-                    color: AppColors.inkLight, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 20),
+            Text(
+              '${(_index % _sentences.length) + 1} / ${_sentences.length}',
+              style: const TextStyle(
+                  color: AppColors.inkLight, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -222,9 +287,7 @@ class _ResultView extends StatelessWidget {
           ),
           child: Text('$score%',
               style: TextStyle(
-                  color: color,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 22)),
+                  color: color, fontWeight: FontWeight.w800, fontSize: 22)),
         ),
         const SizedBox(height: 12),
         Wrap(
@@ -234,7 +297,8 @@ class _ResultView extends StatelessWidget {
             final m = Map<String, dynamic>.from(w);
             final ok = m['correct'] == true;
             return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
                 color: (ok ? AppColors.primary : AppColors.heart)
                     .withValues(alpha: 0.15),
