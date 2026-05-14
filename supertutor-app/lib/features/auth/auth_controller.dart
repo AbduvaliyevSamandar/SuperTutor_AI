@@ -37,6 +37,11 @@ class AuthController extends StateNotifier<AuthState> {
   }
 
   Future<void> signIn(String email, String password) async {
+    final em = email.trim();
+    if (em.isEmpty || password.length < 4) {
+      state = state.copyWith(error: 'Email va parolni to\'liq kiriting');
+      return;
+    }
     if (!AppConfig.supabaseConfigured) {
       state = state.copyWith(error: 'Supabase kalitlari sozlanmagan');
       return;
@@ -44,24 +49,23 @@ class AuthController extends StateNotifier<AuthState> {
     state = state.copyWith(loading: true, error: null);
     try {
       await Supabase.instance.client.auth
-          .signInWithPassword(email: email.trim(), password: password);
+          .signInWithPassword(email: em, password: password);
       state = state.copyWith(loading: false);
     } on AuthException catch (e) {
       final msg = e.message.toLowerCase();
-      // Auto-recover pre-existing accounts whose email confirmation was never sent.
       if (msg.contains('email') &&
           (msg.contains('not confirmed') || msg.contains('not_confirmed'))) {
         try {
-          await _dio.post('/auth/ensure-confirmed', data: {'email': email.trim()});
+          await _dio.post('/auth/ensure-confirmed', data: {'email': em});
           await Supabase.instance.client.auth
-              .signInWithPassword(email: email.trim(), password: password);
+              .signInWithPassword(email: em, password: password);
           state = state.copyWith(loading: false);
           return;
         } catch (_) {}
       }
       state = state.copyWith(loading: false, error: _humanize(e.message));
     } catch (e) {
-      state = state.copyWith(loading: false, error: e.toString());
+      state = state.copyWith(loading: false, error: _humanize(e.toString()));
     }
   }
 
@@ -91,6 +95,15 @@ class AuthController extends StateNotifier<AuthState> {
   /// then we sign in immediately so no email verification step is needed.
   Future<void> signUp(String email, String password,
       {String? displayName}) async {
+    final em = email.trim();
+    if (em.isEmpty || !em.contains('@')) {
+      state = state.copyWith(error: 'To\'g\'ri email kiriting');
+      return;
+    }
+    if (password.length < 6) {
+      state = state.copyWith(error: 'Parol kamida 6 ta belgi bo\'lsin');
+      return;
+    }
     if (!AppConfig.supabaseConfigured) {
       state = state.copyWith(error: 'Supabase kalitlari sozlanmagan');
       return;
@@ -98,30 +111,42 @@ class AuthController extends StateNotifier<AuthState> {
     state = state.copyWith(loading: true, error: null);
     try {
       await _dio.post('/auth/signup', data: {
-        'email': email.trim(),
+        'email': em,
         'password': password,
         if (displayName != null && displayName.isNotEmpty)
           'display_name': displayName,
       });
       await Supabase.instance.client.auth
-          .signInWithPassword(email: email.trim(), password: password);
+          .signInWithPassword(email: em, password: password);
       state = state.copyWith(loading: false);
     } on DioException catch (e) {
       final status = e.response?.statusCode;
-      final detail = (e.response?.data is Map)
-          ? (e.response!.data['detail']?.toString() ?? e.message)
-          : (e.message ?? 'Network error');
+      final detail = _extractError(e);
       if (status == 409) {
         state = state.copyWith(
             loading: false, error: 'Bu email allaqachon ro\'yxatdan o\'tgan');
+      } else if (status == 503 || status == 502) {
+        state = state.copyWith(
+            loading: false,
+            error: 'Server uyg\'onmoqda, 30 soniyadan keyin urinib ko\'ring');
       } else {
         state = state.copyWith(loading: false, error: detail);
       }
     } on AuthException catch (e) {
       state = state.copyWith(loading: false, error: _humanize(e.message));
     } catch (e) {
-      state = state.copyWith(loading: false, error: e.toString());
+      state = state.copyWith(loading: false, error: _humanize(e.toString()));
     }
+  }
+
+  String _extractError(DioException e) {
+    try {
+      final data = e.response?.data;
+      if (data is Map && data['detail'] != null) {
+        return data['detail'].toString();
+      }
+    } catch (_) {}
+    return e.message ?? 'Tarmoq xatosi';
   }
 
   Future<void> signInWithGoogle() async {
@@ -150,11 +175,23 @@ class AuthController extends StateNotifier<AuthState> {
 
   String _humanize(String msg) {
     final m = msg.toLowerCase();
-    if (m.contains('invalid login')) return 'Email yoki parol noto\'g\'ri';
+    if (m.contains('invalid login') || m.contains('credentials')) {
+      return 'Email yoki parol noto\'g\'ri';
+    }
     if (m.contains('email not confirmed')) return 'Email tasdiqlanmagan';
     if (m.contains('user already')) return 'Bu email allaqachon ishlatilgan';
     if (m.contains('password should')) return 'Parol kamida 6 ta belgi bo\'lsin';
-    return msg;
+    if (m.contains('rate limit')) return 'Juda ko\'p urinish — biroz kuting';
+    if (m.contains('network') ||
+        m.contains('socket') ||
+        m.contains('timeout') ||
+        m.contains('connection')) {
+      return 'Internet aloqasi sekin. Qaytadan urinib ko\'ring.';
+    }
+    if (m.contains('database error')) {
+      return 'Server vaqtinchalik xato. Qaytadan urinib ko\'ring.';
+    }
+    return msg.length > 100 ? msg.substring(0, 100) : msg;
   }
 
   @override

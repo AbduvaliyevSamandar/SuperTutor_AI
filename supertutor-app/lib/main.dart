@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
@@ -17,22 +18,39 @@ import 'widgets/warmup_overlay.dart';
 Future<void> main() async {
   final binding = WidgetsFlutterBinding.ensureInitialized();
   FlutterNativeSplash.preserve(widgetsBinding: binding);
+
+  // Global error handlers — silently log instead of red-screen overlay
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    debugPrint('[FlutterError] ${details.exceptionAsString()}');
+  };
+  PlatformDispatcher.instance.onError = (error, stack) {
+    debugPrint('[PlatformError] $error\n$stack');
+    return true;
+  };
+
   try {
     await dotenv.load(fileName: '.env');
-  } catch (_) {
-    // .env missing is fine in dev
-  }
+  } catch (_) {}
   if (AppConfig.supabaseConfigured) {
-    await Supabase.initialize(
-      url: AppConfig.supabaseUrl,
-      anonKey: AppConfig.supabaseAnonKey,
-    );
+    try {
+      await Supabase.initialize(
+        url: AppConfig.supabaseUrl,
+        anonKey: AppConfig.supabaseAnonKey,
+      );
+    } catch (e) {
+      debugPrint('[Supabase.init] $e');
+    }
   }
   final onboarded = await onboardingDone();
-  await NotificationService.init();
-  // Schedule the daily reminder (no-op if pref disabled). Permission is
-  // requested lazily the first time user toggles it in settings.
-  unawaited(NotificationService.scheduleDailyReminder());
+  try {
+    await NotificationService.init();
+  } catch (_) {}
+  unawaited(Future(() async {
+    try {
+      await NotificationService.scheduleDailyReminder();
+    } catch (_) {}
+  }));
   FlutterNativeSplash.remove();
   runApp(ProviderScope(child: SuperTutorApp(onboarded: onboarded)));
 }
