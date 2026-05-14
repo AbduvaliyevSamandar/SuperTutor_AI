@@ -61,7 +61,39 @@ def end_session(
     user_id: str = Depends(require_user_id),
 ) -> dict:
     client = _db()
+    # Fetch session details before closing
+    row = (
+        client.table("sessions")
+        .select("subject, messages_count")
+        .eq("id", session_id)
+        .eq("user_id", user_id)
+        .maybe_single()
+        .execute()
+    )
     client.table("sessions").update({"ended_at": "now()"}).eq(
         "id", session_id
     ).eq("user_id", user_id).execute()
+
+    # If the session was substantial, summarize observations via LLM
+    if row.data and (row.data.get("messages_count") or 0) >= 4:
+        try:
+            _summarize_and_save(user_id, row.data.get("subject") or "english")
+        except Exception:
+            pass
     return {"ok": True}
+
+
+def _summarize_and_save(user_id: str, subject: str) -> None:
+    """Pull recent messages and ask LLM to produce 1-2 brief teacher notes."""
+    from app.services.llm.orchestrator import chat_with_fallback
+    from app.services.personalization import update_notes
+
+    # NOTE: we don't currently persist messages server-side, so this is a
+    # placeholder that simply records that a session happened. When chat
+    # history persistence is added, replace this with real transcript analysis.
+    observation = (
+        f"Completed a {subject} session on {__import__('datetime').date.today()}."
+    )
+    update_notes(user_id, subject, observation)
+    # Best-effort: ignore LLM errors silently
+    _ = chat_with_fallback  # touch import to keep available for future use

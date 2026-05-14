@@ -9,6 +9,7 @@ import '../../widgets/stat_chip.dart';
 import '../../widgets/streak_banner.dart';
 import '../auth/auth_controller.dart';
 import '../currency/currency_controller.dart';
+import '../daily/daily_lesson_card.dart';
 import '../dashboard/stats_repository.dart';
 import 'word_of_the_day.dart';
 
@@ -134,6 +135,11 @@ class SkillTreeScreen extends ConsumerWidget {
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
                 child: _DailyGoalCard(currency: currency, ref: ref),
+              ),
+            if (auth.isAuthenticated)
+              const Padding(
+                padding: EdgeInsets.fromLTRB(20, 0, 20, 12),
+                child: DailyLessonCard(),
               ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),

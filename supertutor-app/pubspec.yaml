@@ -41,6 +41,10 @@ dependencies:
   confetti: ^0.8.0
   flutter_native_splash: ^2.4.4
 
+  # Notifications + timezone
+  flutter_local_notifications: ^17.2.4
+  timezone: ^0.9.4
+
   # Storage
   shared_preferences: ^2.3.3
 

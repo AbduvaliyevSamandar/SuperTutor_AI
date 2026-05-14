@@ -224,6 +224,39 @@ insert into public.user_currency (user_id)
   select user_id from public.profiles
   on conflict (user_id) do nothing;
 
+-- 6d. Personalized learner notes
+create table if not exists public.learner_notes (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  subject text not null,
+  notes text default '',
+  updated_at timestamptz default now(),
+  primary key (user_id, subject)
+);
+
+alter table public.learner_notes enable row level security;
+drop policy if exists "notes self all" on public.learner_notes;
+create policy "notes self all"
+  on public.learner_notes for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+-- 6e. Daily lesson tracking
+create table if not exists public.daily_lesson_progress (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  date date not null default current_date,
+  chat_done bool default false,
+  quiz_done bool default false,
+  srs_done bool default false,
+  primary key (user_id, date)
+);
+
+alter table public.daily_lesson_progress enable row level security;
+drop policy if exists "daily lesson self all" on public.daily_lesson_progress;
+create policy "daily lesson self all"
+  on public.daily_lesson_progress for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
 -- 6. Aggregate view for dashboard
 create or replace view public.user_stats as
 select

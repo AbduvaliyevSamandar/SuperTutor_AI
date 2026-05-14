@@ -3,6 +3,7 @@ from app.api.v1.endpoints import (
     auth,
     chat,
     currency,
+    daily_lesson,
     dictionary,
     exercises,
     health,
@@ -37,3 +38,4 @@ api_router.include_router(srs.router, tags=["srs"])
 api_router.include_router(pronunciation.router, tags=["voice"])
 api_router.include_router(ielts.router, tags=["ielts"])
 api_router.include_router(stories.router, tags=["stories"])
+api_router.include_router(daily_lesson.router, tags=["daily"])

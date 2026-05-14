@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
@@ -5,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/config.dart';
+import 'core/notifications.dart';
 import 'core/router.dart';
 import 'core/theme.dart';
 import 'features/onboarding/onboarding_screen.dart';
@@ -25,6 +28,10 @@ Future<void> main() async {
     );
   }
   final onboarded = await onboardingDone();
+  await NotificationService.init();
+  // Schedule the daily reminder (no-op if pref disabled). Permission is
+  // requested lazily the first time user toggles it in settings.
+  unawaited(NotificationService.scheduleDailyReminder());
   FlutterNativeSplash.remove();
   runApp(ProviderScope(child: SuperTutorApp(onboarded: onboarded)));
 }

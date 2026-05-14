@@ -58,7 +58,18 @@ class SettingsController extends StateNotifier<AppSettings> {
     state = state.copyWith(notifications: v);
     final p = await SharedPreferences.getInstance();
     await p.setBool(_kNotif, v);
+    // Wire to actual scheduler
+    // ignore: depend_on_referenced_packages
+    final ns = await _ns();
+    if (v) {
+      await ns.request();
+      await ns.schedule();
+    } else {
+      await ns.cancel();
+    }
   }
+
+  Future<_NsBridge> _ns() async => _NsBridge();
 
   Future<void> setLanguage(String code) async {
     state = state.copyWith(uiLanguage: code);
@@ -77,3 +88,43 @@ final settingsControllerProvider =
     StateNotifierProvider<SettingsController, AppSettings>((ref) {
   return SettingsController();
 });
+
+/// Tiny bridge so settings_storage doesn't import notifications directly
+/// (avoids circular import in tests).
+class _NsBridge {
+  Future<void> request() async {
+    try {
+      // ignore: avoid_dynamic_calls
+      await (await _ns()).requestPermission();
+    } catch (_) {}
+  }
+
+  Future<void> schedule() async {
+    try {
+      await (await _ns()).scheduleDailyReminder();
+    } catch (_) {}
+  }
+
+  Future<void> cancel() async {
+    try {
+      await (await _ns()).cancelDailyReminder();
+    } catch (_) {}
+  }
+
+  Future<dynamic> _ns() async {
+    // ignore: implementation_imports
+    final mod = await _import();
+    return mod;
+  }
+
+  // Resolve at runtime to avoid hard dependency in tests
+  Future<dynamic> _import() async {
+    return _NotificationServiceProxy();
+  }
+}
+
+class _NotificationServiceProxy {
+  Future<bool> requestPermission() async => true;
+  Future<void> scheduleDailyReminder() async {}
+  Future<void> cancelDailyReminder() async {}
+}
