@@ -5,7 +5,10 @@ import '../../core/theme.dart';
 import '../achievements/achievements_screen.dart';
 import '../exercises/cloze_screen.dart';
 import '../exercises/listening_screen.dart';
+import '../friends/friends_screen.dart';
 import '../grammar/grammar_screen.dart';
+import '../ielts/ielts_listening_screen.dart';
+import '../ielts/ielts_reading_screen.dart';
 import '../ielts/ielts_speaking_screen.dart';
 import '../ielts/ielts_writing_screen.dart';
 import '../leaderboard/leaderboard_screen.dart';
@@ -51,6 +54,15 @@ class LearnScreen extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 10),
+          _QuickLink(
+            emoji: '👥',
+            label: 'Do\'stlar',
+            color: AppColors.primary,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const FriendsScreen()),
+            ),
           ),
           const SizedBox(height: 16),
           Text('Mashqlar',
@@ -160,6 +172,24 @@ class LearnScreen extends StatelessWidget {
             subtitle: '40 daq · essay · band feedback',
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const IeltsWritingScreen()),
+            ),
+          ),
+          const SizedBox(height: 10),
+          _IeltsBanner(
+            emoji: '📖',
+            title: 'IELTS Reading',
+            subtitle: 'Matn + 7 savol · band score',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const IeltsReadingScreen()),
+            ),
+          ),
+          const SizedBox(height: 10),
+          _IeltsBanner(
+            emoji: '🎧',
+            title: 'IELTS Listening',
+            subtitle: 'Audio + 5 savol',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const IeltsListeningScreen()),
             ),
           ),
 
