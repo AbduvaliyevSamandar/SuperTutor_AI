@@ -29,6 +29,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   int _page = 0;
   String? _goal;
   String? _level;
+  String? _learnLang;
 
   static const _goals = [
     ('🎓', 'IELTS / sertifikat'),
@@ -45,9 +46,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     ('C1', 'Yuqori daraja'),
   ];
 
+  static const _langs = [
+    ('🇬🇧', 'english', 'Ingliz tili'),
+    ('🇷🇺', 'russian', 'Rus tili'),
+    ('🇩🇪', 'german', 'Nemis tili'),
+    ('🇹🇷', 'turkish', 'Turk tili'),
+    ('📐', 'math', 'Matematika'),
+  ];
+
   bool get _canNext {
-    if (_page == 1 && _goal == null) return false;
-    if (_page == 2 && _level == null) return false;
+    if (_page == 1 && _learnLang == null) return false;
+    if (_page == 2 && _goal == null) return false;
+    if (_page == 3 && _level == null) return false;
     return true;
   }
 
@@ -69,7 +79,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            _ProgressBar(page: _page, total: 4),
+            _ProgressBar(page: _page, total: 5),
             Expanded(
               child: PageView(
                 controller: _pager,
@@ -77,6 +87,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 physics: const NeverScrollableScrollPhysics(),
                 children: [
                   _WelcomePage(onSkip: _finish),
+                  _LangPage(
+                    selected: _learnLang,
+                    onSelect: (l) => setState(() => _learnLang = l),
+                    langs: _langs,
+                  ),
                   _GoalPage(
                     selected: _goal,
                     onSelect: (g) => setState(() => _goal = g),
@@ -94,11 +109,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
               child: DuoButton(
-                label: _page == 3 ? 'Boshlash 🚀' : 'Davom etish',
+                label: _page == 4 ? 'Boshlash 🚀' : 'Davom etish',
                 onPressed: !_canNext
                     ? null
                     : () {
-                        if (_page == 3) {
+                        if (_page == 4) {
                           _finish();
                         } else {
                           _pager.nextPage(
@@ -197,6 +212,79 @@ class _WelcomePage extends StatelessWidget {
           const Spacer(flex: 2),
         ],
       ),
+    );
+  }
+}
+
+class _LangPage extends StatelessWidget {
+  final String? selected;
+  final ValueChanged<String> onSelect;
+  final List<(String, String, String)> langs;
+  const _LangPage({
+    required this.selected,
+    required this.onSelect,
+    required this.langs,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(28, 8, 28, 24),
+      children: [
+        const SizedBox(height: 24),
+        Text('Nimani o\'rganmoqchisiz?',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.headlineMedium),
+        const SizedBox(height: 8),
+        const Text(
+          'Til yoki fanni tanlang',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+              color: AppColors.inkLight, fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 32),
+        ...langs.map((l) {
+          final (emoji, code, name) = l;
+          final isSelected = selected == code;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: () => onSelect(code),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 16),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? AppColors.secondary.withValues(alpha: 0.1)
+                      : AppColors.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isSelected ? AppColors.secondary : AppColors.border,
+                    width: 2,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Text(emoji, style: const TextStyle(fontSize: 32)),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(name,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 16)),
+                    ),
+                    if (isSelected)
+                      const Icon(Icons.check_circle,
+                          color: AppColors.secondary, size: 22),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }),
+      ],
     );
   }
 }

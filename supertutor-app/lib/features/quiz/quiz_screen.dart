@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme.dart';
 import '../../widgets/duo_button.dart';
+import '../../widgets/haptics.dart';
 import '../../widgets/sound_effects.dart';
 import '../auth/auth_controller.dart';
 import '../currency/currency_controller.dart';
@@ -60,11 +61,13 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
           .read(quizRepositoryProvider)
           .submit(quiz: _quiz!, answers: _answers);
 
-      // Pre-result sound for immediate feedback
+      // Pre-result sound + haptic for immediate feedback
       if (result.percentage >= 50) {
         SoundEffects.correct();
+        Haptics.success();
       } else {
         SoundEffects.wrong();
+        Haptics.error();
       }
 
       int xpEarned = 0;
@@ -174,7 +177,10 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                       padding: const EdgeInsets.only(bottom: 10),
                       child: InkWell(
                         borderRadius: BorderRadius.circular(14),
-                        onTap: () => setState(() => _answers[q.id] = i),
+                        onTap: () {
+                          Haptics.tap();
+                          setState(() => _answers[q.id] = i);
+                        },
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 120),
                           padding: const EdgeInsets.symmetric(

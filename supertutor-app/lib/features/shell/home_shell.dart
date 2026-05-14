@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme.dart';
+import '../achievements/achievement_watcher.dart';
 import '../dashboard/dashboard_screen.dart';
 import '../dictionary/dictionary_screen.dart';
 import '../home/skill_tree_screen.dart';
@@ -27,6 +28,12 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
+    return AchievementWatcher(
+      child: _buildScaffold(),
+    );
+  }
+
+  Widget _buildScaffold() {
     return Scaffold(
       body: IndexedStack(index: _index, children: _pages),
       bottomNavigationBar: Container(
