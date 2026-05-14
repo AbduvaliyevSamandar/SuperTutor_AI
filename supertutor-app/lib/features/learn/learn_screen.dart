@@ -7,6 +7,7 @@ import '../exercises/cloze_screen.dart';
 import '../exercises/listening_screen.dart';
 import '../grammar/grammar_screen.dart';
 import '../ielts/ielts_speaking_screen.dart';
+import '../ielts/ielts_writing_screen.dart';
 import '../leaderboard/leaderboard_screen.dart';
 import '../pronunciation/pronunciation_screen.dart';
 import '../quiz/quiz_screen.dart';
@@ -145,8 +146,20 @@ class LearnScreen extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           _IeltsBanner(
+            emoji: '🎓',
+            title: 'IELTS Speaking simulyator',
+            subtitle: '3 part · AI examiner · Band score',
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const IeltsSpeakingScreen()),
+            ),
+          ),
+          const SizedBox(height: 10),
+          _IeltsBanner(
+            emoji: '✍️',
+            title: 'IELTS Writing Task 2',
+            subtitle: '40 daq · essay · band feedback',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const IeltsWritingScreen()),
             ),
           ),
 
@@ -236,8 +249,16 @@ class LearnScreen extends StatelessWidget {
 }
 
 class _IeltsBanner extends StatelessWidget {
+  final String emoji;
+  final String title;
+  final String subtitle;
   final VoidCallback onTap;
-  const _IeltsBanner({required this.onTap});
+  const _IeltsBanner({
+    required this.emoji,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -263,27 +284,27 @@ class _IeltsBanner extends StatelessWidget {
         ),
         child: Row(
           children: [
-            const Text('🎓', style: TextStyle(fontSize: 36)),
+            Text(emoji, style: const TextStyle(fontSize: 36)),
             const SizedBox(width: 12),
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('IELTS Speaking simulyator',
-                      style: TextStyle(
+                  Text(title,
+                      style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w800,
                           fontSize: 16)),
-                  SizedBox(height: 2),
-                  Text('3 part · AI examiner · Band score',
-                      style: TextStyle(
+                  const SizedBox(height: 2),
+                  Text(subtitle,
+                      style: const TextStyle(
                           color: Colors.white70,
                           fontWeight: FontWeight.w600,
                           fontSize: 12)),
                 ],
               ),
             ),
-            Icon(Icons.arrow_forward_rounded, color: Colors.white),
+            const Icon(Icons.arrow_forward_rounded, color: Colors.white),
           ],
         ),
       ),

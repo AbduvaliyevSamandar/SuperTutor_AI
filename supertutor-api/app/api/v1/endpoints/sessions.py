@@ -84,16 +84,41 @@ def end_session(
 
 
 def _summarize_and_save(user_id: str, subject: str) -> None:
-    """Pull recent messages and ask LLM to produce 1-2 brief teacher notes."""
+    """Pull last session's messages and ask LLM for 1-2 brief teacher notes."""
     from app.services.llm.orchestrator import chat_with_fallback
     from app.services.personalization import update_notes
 
-    # NOTE: we don't currently persist messages server-side, so this is a
-    # placeholder that simply records that a session happened. When chat
-    # history persistence is added, replace this with real transcript analysis.
-    observation = (
-        f"Completed a {subject} session on {__import__('datetime').date.today()}."
+    client = get_supabase_admin()
+    if client is None:
+        return
+    # Grab messages from the most recently ended session of this subject
+    msgs = (
+        client.table("chat_messages")
+        .select("role, content")
+        .eq("user_id", user_id)
+        .eq("subject", subject)
+        .order("created_at", desc=True)
+        .limit(20)
+        .execute()
     )
-    update_notes(user_id, subject, observation)
-    # Best-effort: ignore LLM errors silently
-    _ = chat_with_fallback  # touch import to keep available for future use
+    rows = list(reversed(msgs.data or []))
+    if not rows:
+        return
+    transcript = "\n".join(
+        f"{r['role'][0].upper()}: {r['content'][:300]}" for r in rows
+    )
+    prompt = (
+        "You are reviewing a tutoring transcript. Write a SINGLE short paragraph "
+        "(<=2 sentences) of teacher notes capturing this learner's main mistakes "
+        "or weak topics. Plain text, no preamble.\n\nTranscript:\n" + transcript
+    )
+    try:
+        observation, _ = chat_with_fallback([
+            {"role": "system", "content": "You write concise teacher notes."},
+            {"role": "user", "content": prompt},
+        ])
+    except Exception:
+        observation = (
+            f"Completed a {subject} session on {__import__('datetime').date.today()}."
+        )
+    update_notes(user_id, subject, observation.strip()[:600])

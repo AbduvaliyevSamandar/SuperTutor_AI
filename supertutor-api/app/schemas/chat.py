@@ -8,9 +8,10 @@ class ChatMessage(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    subject: str = Field(default="english", description="english | math | russian | german | turkish")
-    level: str | None = Field(default=None, description="CEFR level for languages: A1..C1")
+    subject: str = Field(default="english")
+    level: str | None = None
     messages: list[ChatMessage]
+    session_id: str | None = None
 
 
 class ChatResponse(BaseModel):

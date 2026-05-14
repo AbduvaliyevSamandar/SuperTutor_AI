@@ -6,6 +6,7 @@ import '../../core/config.dart';
 import '../../core/theme.dart';
 import '../../widgets/duo_button.dart';
 import '../auth/auth_controller.dart';
+import 'activity_chart.dart';
 import 'stats_repository.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -86,6 +87,8 @@ class _StatsView extends ConsumerWidget {
         data: (s) => ListView(
           padding: const EdgeInsets.all(20),
           children: [
+            const WeeklyActivityChart(),
+            const SizedBox(height: 16),
             Row(
               children: [
                 Expanded(

@@ -224,6 +224,28 @@ insert into public.user_currency (user_id)
   select user_id from public.profiles
   on conflict (user_id) do nothing;
 
+-- 6c. Chat message history (for conversation memory)
+create table if not exists public.chat_messages (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  session_id uuid references public.sessions(id) on delete cascade,
+  subject text not null,
+  role text not null,
+  content text not null,
+  created_at timestamptz default now()
+);
+create index if not exists chat_msgs_session_idx
+  on public.chat_messages(session_id, created_at);
+create index if not exists chat_msgs_user_idx
+  on public.chat_messages(user_id, created_at desc);
+
+alter table public.chat_messages enable row level security;
+drop policy if exists "msgs self all" on public.chat_messages;
+create policy "msgs self all"
+  on public.chat_messages for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
 -- 6d. Personalized learner notes
 create table if not exists public.learner_notes (
   user_id uuid not null references auth.users(id) on delete cascade,
