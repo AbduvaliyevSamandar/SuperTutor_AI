@@ -53,15 +53,15 @@ def today(user_id: str = Depends(require_user_id)) -> DailyLesson:
     client = _db()
 
     # Pick subject from profile.learning_goal/english_level if set, else english
-    prof = (
+    from app.core.db_utils import safe_single
+    prof = safe_single(
         client.table("profiles")
         .select("learning_goal, english_level")
         .eq("user_id", user_id)
         .maybe_single()
-        .execute()
-    )
+    ) or {}
     subject = "english"
-    goal = ((prof.data or {}).get("learning_goal") or "").lower()
+    goal = (prof.get("learning_goal") or "").lower()
     if "matematika" in goal or "math" in goal:
         subject = "math"
 
@@ -88,15 +88,13 @@ def today(user_id: str = Depends(require_user_id)) -> DailyLesson:
 
     # Today's progress
     today_str = date.today().isoformat()
-    prog = (
+    p = safe_single(
         client.table("daily_lesson_progress")
         .select("chat_done, quiz_done, srs_done")
         .eq("user_id", user_id)
         .eq("date", today_str)
         .maybe_single()
-        .execute()
-    )
-    p = prog.data or {}
+    ) or {}
 
     return DailyLesson(
         subject=subject,

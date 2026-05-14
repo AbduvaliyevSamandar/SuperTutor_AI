@@ -1,34 +1,30 @@
 """Pull learner profile + notes for personalized prompts."""
+from app.core.db_utils import safe_single
 from app.core.supabase import get_supabase_admin
 
 
 def fetch_personalization(user_id: str | None, subject: str) -> str:
-    """Returns a system-prompt suffix with the learner's goal, level, and recent
-    teacher notes for this subject. Empty string if anonymous or no data."""
     if not user_id:
         return ""
     client = get_supabase_admin()
     if client is None:
         return ""
 
-    prof = (
+    profile = safe_single(
         client.table("profiles")
         .select("display_name, english_level, learning_goal")
         .eq("user_id", user_id)
         .maybe_single()
-        .execute()
-    )
-    profile = prof.data or {}
+    ) or {}
 
-    notes_row = (
+    notes_row = safe_single(
         client.table("learner_notes")
         .select("notes")
         .eq("user_id", user_id)
         .eq("subject", subject)
         .maybe_single()
-        .execute()
-    )
-    notes = (notes_row.data or {}).get("notes") or ""
+    ) or {}
+    notes = notes_row.get("notes") or ""
 
     bits: list[str] = []
     if profile.get("display_name"):
@@ -46,21 +42,22 @@ def fetch_personalization(user_id: str | None, subject: str) -> str:
 
 
 def update_notes(user_id: str, subject: str, observation: str) -> None:
-    """Append/update teacher's notes after a session."""
     client = get_supabase_admin()
     if client is None:
         return
-    cur = (
+    cur = safe_single(
         client.table("learner_notes")
         .select("notes")
         .eq("user_id", user_id)
         .eq("subject", subject)
         .maybe_single()
-        .execute()
-    )
-    existing = ((cur.data or {}).get("notes") or "").strip()
+    ) or {}
+    existing = (cur.get("notes") or "").strip()
     merged = (observation.strip() + "\n" + existing).strip()[:1500]
-    client.table("learner_notes").upsert(
-        {"user_id": user_id, "subject": subject, "notes": merged},
-        on_conflict="user_id,subject",
-    ).execute()
+    try:
+        client.table("learner_notes").upsert(
+            {"user_id": user_id, "subject": subject, "notes": merged},
+            on_conflict="user_id,subject",
+        ).execute()
+    except Exception:
+        pass

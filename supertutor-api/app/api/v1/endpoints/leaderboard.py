@@ -20,18 +20,18 @@ def top(limit: int = 20) -> dict:
         .limit(min(max(1, limit), 100))
         .execute()
     )
+    from app.core.db_utils import safe_single
     items: list[dict] = []
     for row in cur.data or []:
-        prof = (
+        prof = safe_single(
             client.table("profiles")
             .select("display_name")
             .eq("user_id", row["user_id"])
             .maybe_single()
-            .execute()
-        )
+        ) or {}
         items.append({
             "user_id": row["user_id"],
             "xp_total": row["xp_total"],
-            "display_name": (prof.data or {}).get("display_name") or "Foydalanuvchi",
+            "display_name": prof.get("display_name") or "Foydalanuvchi",
         })
     return {"items": items}

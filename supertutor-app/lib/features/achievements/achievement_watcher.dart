@@ -100,8 +100,16 @@ class _AchievementWatcherState extends ConsumerState<AchievementWatcher> {
 
   @override
   Widget build(BuildContext context) {
-    ref.listen(myStatsProvider, (_, _) => _check());
-    ref.listen(currencyControllerProvider, (_, _) => _check());
+    ref.listen(myStatsProvider, (_, _) {
+      try {
+        _check();
+      } catch (_) {}
+    });
+    ref.listen(currencyControllerProvider, (_, _) {
+      try {
+        _check();
+      } catch (_) {}
+    });
     return widget.child;
   }
 }

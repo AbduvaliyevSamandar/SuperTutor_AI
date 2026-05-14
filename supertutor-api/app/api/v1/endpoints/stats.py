@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from app.core.db_utils import safe_single
 from app.core.security import require_user_id
 from app.core.supabase import get_supabase_admin
 from app.schemas.sessions import UserStats
@@ -12,23 +13,19 @@ def my_stats(user_id: str = Depends(require_user_id)) -> UserStats:
     if client is None:
         raise HTTPException(status_code=503, detail="Database not configured")
 
-    agg = (
+    row = safe_single(
         client.table("user_stats")
         .select("*")
         .eq("user_id", user_id)
         .maybe_single()
-        .execute()
-    )
-    profile = (
+    ) or {}
+    prof = safe_single(
         client.table("profiles")
         .select("english_level, streak_days")
         .eq("user_id", user_id)
         .maybe_single()
-        .execute()
-    )
+    ) or {}
 
-    row = agg.data or {}
-    prof = profile.data or {}
     return UserStats(
         total_sessions=row.get("total_sessions", 0) or 0,
         total_seconds=row.get("total_seconds", 0) or 0,

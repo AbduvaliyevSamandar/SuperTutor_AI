@@ -89,19 +89,19 @@ def review(
     user_id: str = Depends(require_user_id),
 ) -> ReviewResponse:
     client = _db()
-    cur = (
+    from app.core.db_utils import safe_single
+    cur = safe_single(
         client.table("vocabulary_entries")
         .select("ease_factor, interval_days, repetitions")
         .eq("id", req.word_id)
         .eq("user_id", user_id)
         .maybe_single()
-        .execute()
     )
-    if not cur.data:
+    if not cur:
         raise HTTPException(status_code=404, detail="Word not found")
-    ease = float(cur.data.get("ease_factor") or 2.5)
-    interval = int(cur.data.get("interval_days") or 0)
-    reps = int(cur.data.get("repetitions") or 0)
+    ease = float(cur.get("ease_factor") or 2.5)
+    interval = int(cur.get("interval_days") or 0)
+    reps = int(cur.get("repetitions") or 0)
     ease, interval, reps = _sm2_update(ease, interval, reps, req.rating)
 
     now = datetime.now(timezone.utc)

@@ -50,42 +50,54 @@ def _db():
 
 def _ensure_currency_row(client, user_id: str) -> dict:
     """Return the user's currency row, creating it if missing."""
-    res = (
+    from app.core.db_utils import safe_single
+    row = safe_single(
         client.table("user_currency")
         .select("*")
         .eq("user_id", user_id)
         .maybe_single()
-        .execute()
     )
-    row = res.data
     if row:
         return row
-    client.table("user_currency").upsert({"user_id": user_id}).execute()
-    res = (
+    try:
+        client.table("user_currency").upsert({"user_id": user_id}).execute()
+    except Exception:
+        pass
+    row = safe_single(
         client.table("user_currency")
         .select("*")
         .eq("user_id", user_id)
-        .single()
-        .execute()
+        .maybe_single()
     )
-    return res.data
+    return row or {
+        "user_id": user_id,
+        "hearts": 5,
+        "max_hearts": 5,
+        "xp_total": 0,
+        "gems": 50,
+        "streak_freezes": 0,
+        "last_heart_refill_at": None,
+    }
 
 
 def _today_goal(client, user_id: str) -> dict:
+    from app.core.db_utils import safe_single
     today = date.today().isoformat()
-    res = (
+    row = safe_single(
         client.table("daily_goals")
         .select("*")
         .eq("user_id", user_id)
         .eq("date", today)
         .maybe_single()
-        .execute()
     )
-    if res.data:
-        return res.data
-    client.table("daily_goals").upsert(
-        {"user_id": user_id, "date": today, "target_xp": 20, "earned_xp": 0}
-    ).execute()
+    if row:
+        return row
+    try:
+        client.table("daily_goals").upsert(
+            {"user_id": user_id, "date": today, "target_xp": 20, "earned_xp": 0}
+        ).execute()
+    except Exception:
+        pass
     return {"user_id": user_id, "date": today, "target_xp": 20, "earned_xp": 0}
 
 
