@@ -12,6 +12,7 @@ import 'core/router.dart';
 import 'core/theme.dart';
 import 'features/onboarding/onboarding_screen.dart';
 import 'features/profile/settings_storage.dart';
+import 'widgets/warmup_overlay.dart';
 
 Future<void> main() async {
   final binding = WidgetsFlutterBinding.ensureInitialized();
@@ -54,6 +55,7 @@ class SuperTutorApp extends ConsumerWidget {
       darkTheme: buildDarkTheme(),
       themeMode: settings.darkMode ? ThemeMode.dark : ThemeMode.light,
       routerConfig: router,
+      builder: (context, child) => WarmupGate(child: child ?? const SizedBox()),
     );
   }
 }
