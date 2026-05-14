@@ -25,6 +25,19 @@ envVarGroups:
         sync: false
 
 services:
+  # ---------- Telegram bot (APK distribution) ----------
+  - type: worker
+    name: supertutor-bot
+    env: docker
+    plan: free
+    region: singapore
+    rootDir: supertutor-bot
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+
+
   # ---------- Backend: FastAPI + Groq/OpenAI/Gemini cascade ----------
   - type: web
     name: supertutor-api
