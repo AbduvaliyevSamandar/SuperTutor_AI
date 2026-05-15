@@ -138,3 +138,21 @@ def reset_password(req: ResetPasswordRequest) -> dict:
     if r.status_code in (200, 201):
         return {"ok": True}
     raise HTTPException(status_code=r.status_code, detail=r.text[:500])
+
+
+from app.core.security import require_user_id  # noqa: E402
+from fastapi import Depends  # noqa: E402
+
+
+@router.delete("/auth/me")
+def delete_self(user_id: str = Depends(require_user_id)) -> dict:
+    """Delete the currently signed-in user's account + all data."""
+    base, headers = _admin_headers()
+    r = httpx.delete(
+        f"{base}/auth/v1/admin/users/{user_id}",
+        headers=headers,
+        timeout=30,
+    )
+    if r.status_code in (200, 204):
+        return {"ok": True}
+    raise HTTPException(status_code=r.status_code, detail=r.text[:500])

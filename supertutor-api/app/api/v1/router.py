@@ -7,6 +7,7 @@ from app.api.v1.endpoints import (
     daily_lesson,
     dictionary,
     exercises,
+    feedback as feedback_mod,
     friends,
     health,
     identify,
@@ -57,3 +58,4 @@ api_router.include_router(stories.router, tags=["stories"])
 api_router.include_router(daily_lesson.router, tags=["daily"])
 api_router.include_router(friends.router, tags=["social"])
 api_router.include_router(podcast.router, tags=["learning"])
+api_router.include_router(feedback_mod.router, tags=["feedback"])

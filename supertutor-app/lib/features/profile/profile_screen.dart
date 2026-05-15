@@ -6,9 +6,11 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/config.dart';
 import '../../core/theme.dart';
 import '../../widgets/duo_button.dart';
+import '../../core/api_client.dart';
 import '../auth/auth_controller.dart';
 import '../currency/currency_controller.dart';
 import '../dashboard/stats_repository.dart';
+import '../feedback/feedback_screen.dart';
 import 'settings_storage.dart';
 import 'static_pages.dart';
 
@@ -170,6 +172,14 @@ class ProfileScreen extends ConsumerWidget {
               MaterialPageRoute(builder: (_) => const PrivacyPage()),
             ),
           ),
+          _SettingsTile(
+            icon: Icons.feedback_outlined,
+            color: AppColors.fire,
+            label: 'Fikr / Xato yuborish',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const FeedbackScreen()),
+            ),
+          ),
 
           if (auth.isAuthenticated) ...[
             const SizedBox(height: 24),
@@ -287,12 +297,20 @@ class ProfileScreen extends ConsumerWidget {
       ),
     );
     if (ok != true) return;
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text(
-                'Akkaunt o\'chirish: hozircha qo\'lda — elmurodovmaxmud77@gmail.com ga yuboring')),
-      );
+    try {
+      await ref.read(dioProvider).delete('/auth/me');
+      await ref.read(authControllerProvider.notifier).signOut();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Akkaunt o\'chirildi.')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Xato: $e')),
+        );
+      }
     }
   }
 }

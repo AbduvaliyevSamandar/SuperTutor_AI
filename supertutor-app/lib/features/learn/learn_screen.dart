@@ -9,6 +9,7 @@ import '../camera/camera_dictionary_screen.dart';
 import '../friends/friends_screen.dart';
 import '../grammar/grammar_screen.dart';
 import '../podcast/podcast_screen.dart';
+import '../practice/quick_practice_screen.dart';
 import '../vocab/vocab_topics_screen.dart';
 import '../ielts/ielts_listening_screen.dart';
 import '../ielts/ielts_mock_test_screen.dart';
@@ -66,6 +67,54 @@ class LearnScreen extends StatelessWidget {
             color: AppColors.primary,
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const FriendsScreen()),
+            ),
+          ),
+          const SizedBox(height: 16),
+          InkWell(
+            borderRadius: BorderRadius.circular(18),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                  builder: (_) => const QuickPracticeScreen()),
+            ),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFF6B6B), Color(0xFFEE2C5C)],
+                ),
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFEE2C5C).withValues(alpha: 0.5),
+                    offset: const Offset(0, 4),
+                    blurRadius: 0,
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  const Text('⚡', style: TextStyle(fontSize: 36)),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('60s tezkor mashq',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 16)),
+                        Text('Ko\'p javob ber — ko\'p XP',
+                            style: TextStyle(
+                                color: Colors.white70,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.play_arrow_rounded, color: Colors.white),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 16),
