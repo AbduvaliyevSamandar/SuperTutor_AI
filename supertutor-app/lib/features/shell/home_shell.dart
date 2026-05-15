@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/i18n.dart';
 import '../../core/theme.dart';
 import '../achievements/achievement_watcher.dart';
 import '../dashboard/dashboard_screen.dart';
@@ -8,14 +10,14 @@ import '../home/skill_tree_screen.dart';
 import '../learn/learn_screen.dart';
 import '../profile/profile_screen.dart';
 
-class HomeShell extends StatefulWidget {
+class HomeShell extends ConsumerStatefulWidget {
   const HomeShell({super.key});
 
   @override
-  State<HomeShell> createState() => _HomeShellState();
+  ConsumerState<HomeShell> createState() => _HomeShellState();
 }
 
-class _HomeShellState extends State<HomeShell> {
+class _HomeShellState extends ConsumerState<HomeShell> {
   int _index = 0;
 
   static const _pages = [
@@ -62,31 +64,31 @@ class _HomeShellState extends State<HomeShell> {
             child: NavigationBar(
               selectedIndex: _index,
               onDestinationSelected: (i) => setState(() => _index = i),
-              destinations: const [
+              destinations: [
                 NavigationDestination(
-                  icon: Icon(Icons.home_outlined),
-                  selectedIcon: Icon(Icons.home_rounded),
-                  label: 'Bosh',
+                  icon: const Icon(Icons.home_outlined),
+                  selectedIcon: const Icon(Icons.home_rounded),
+                  label: ref.tr('nav.home'),
                 ),
                 NavigationDestination(
-                  icon: Icon(Icons.school_outlined),
-                  selectedIcon: Icon(Icons.school_rounded),
-                  label: 'Darslar',
+                  icon: const Icon(Icons.school_outlined),
+                  selectedIcon: const Icon(Icons.school_rounded),
+                  label: ref.tr('nav.learn'),
                 ),
                 NavigationDestination(
-                  icon: Icon(Icons.menu_book_outlined),
-                  selectedIcon: Icon(Icons.menu_book_rounded),
-                  label: 'Lug\'at',
+                  icon: const Icon(Icons.menu_book_outlined),
+                  selectedIcon: const Icon(Icons.menu_book_rounded),
+                  label: ref.tr('nav.dictionary'),
                 ),
                 NavigationDestination(
-                  icon: Icon(Icons.bar_chart_outlined),
-                  selectedIcon: Icon(Icons.bar_chart_rounded),
-                  label: 'Statistika',
+                  icon: const Icon(Icons.bar_chart_outlined),
+                  selectedIcon: const Icon(Icons.bar_chart_rounded),
+                  label: ref.tr('nav.stats'),
                 ),
                 NavigationDestination(
-                  icon: Icon(Icons.person_outline),
-                  selectedIcon: Icon(Icons.person_rounded),
-                  label: 'Profil',
+                  icon: const Icon(Icons.person_outline),
+                  selectedIcon: const Icon(Icons.person_rounded),
+                  label: ref.tr('nav.profile'),
                 ),
               ],
             ),
