@@ -197,4 +197,334 @@ Modal fe'llar shaxsga qarab o'zgarmaydi (s qo'shilmaydi). Keyin to'g'ridan-to'g'
       'The President gave a speech.',
     ],
   ),
+  GrammarLesson(
+    code: 'comparatives',
+    title: 'Comparatives & Superlatives',
+    emoji: '⚖️',
+    summary: 'Solishtirish darajalari',
+    content: '''**Comparative** (ikki narsa solishtirish):
+- 1 bo'g'in: -er (taller, bigger, faster)
+- 2+ bo'g'in: more + adjective (more beautiful)
+
+**Superlative** (ko'pchilikning eng):
+- 1 bo'g'in: the -est (tallest, biggest)
+- 2+ bo'g'in: the most + adjective (the most beautiful)
+
+**Irregular**: good→better→best, bad→worse→worst, far→further→furthest.''',
+    examples: [
+      'She is taller than her brother.',
+      'This is the most interesting book I\'ve read.',
+      'Today is hotter than yesterday.',
+    ],
+  ),
+  GrammarLesson(
+    code: 'plurals',
+    title: 'Ko\'plik shakli',
+    emoji: '👯',
+    summary: 'Regular and irregular plurals',
+    content: '''**Regular:**
+- Most nouns + s: book → books
+- -s, -x, -ch, -sh + es: box → boxes, watch → watches
+- consonant + y → ies: city → cities
+- -f, -fe → ves: knife → knives, leaf → leaves
+
+**Irregular:**
+- man → men, woman → women, child → children
+- foot → feet, tooth → teeth, mouse → mice
+- fish → fish, sheep → sheep (no change)''',
+    examples: [
+      'There are three cats in the garden.',
+      'The children are playing outside.',
+      'I have two pairs of glasses.',
+    ],
+  ),
+  GrammarLesson(
+    code: 'prepositions',
+    title: 'Prepositions (in, on, at)',
+    emoji: '📍',
+    summary: 'Vaqt va joy ko\'rsatkichlari',
+    content: '''**Joy uchun:**
+- **in** — ichida: in the room, in the city
+- **on** — ustida: on the table, on the wall
+- **at** — nuqtada: at home, at the door
+
+**Vaqt uchun:**
+- **in** — uzun davr: in 2026, in January, in the morning
+- **on** — kun: on Monday, on July 4
+- **at** — aniq vaqt: at 5pm, at midnight, at night''',
+    examples: [
+      'The book is on the table.',
+      'I was born in 2001.',
+      'Let\'s meet at the cafe at 7pm.',
+    ],
+  ),
+  GrammarLesson(
+    code: 'pronouns',
+    title: 'Olmoshlar (Pronouns)',
+    emoji: '👤',
+    summary: 'Subject, object, possessive',
+    content: '''**Subject** (gap ega): I, you, he, she, it, we, they
+**Object** (predmet): me, you, him, her, it, us, them
+**Possessive adjective** (egalik): my, your, his, her, its, our, their
+**Possessive pronoun**: mine, yours, his, hers, ours, theirs
+
+**Reflexive**: myself, yourself, himself, herself, itself, ourselves, themselves.''',
+    examples: [
+      'She gave me her book.',
+      'This pen is mine, not yours.',
+      'He cut himself while cooking.',
+    ],
+  ),
+  GrammarLesson(
+    code: 'questions',
+    title: 'Savol tuzish (Wh- + Yes/No)',
+    emoji: '❓',
+    summary: 'Question formation',
+    content: '''**Yes/No savol:**
+- Auxiliary + subject + verb: Do you like coffee? Have you been there?
+
+**Wh- savol** (What, Where, When, Who, Why, How):
+- Wh + auxiliary + subject + verb: Where do you live?
+- Subject question (ega haqida): Who called you?
+
+**Be fe'l bilan:**
+- Are you tired? — What is your name?''',
+    examples: [
+      'Where did you go yesterday?',
+      'Have you finished your homework?',
+      'Why are you so happy?',
+    ],
+  ),
+  GrammarLesson(
+    code: 'passive',
+    title: 'Passive voice',
+    emoji: '🔄',
+    summary: 'Majhul nisbat',
+    content: '''**Active**: Subject + verb + object
+**Passive**: Object + be + past participle (+ by + agent)
+
+- Active: The chef cooks the meal.
+- Passive: The meal is cooked (by the chef).
+
+**Times in passive:**
+- Present: is/are + V3
+- Past: was/were + V3
+- Present Perfect: has/have been + V3
+- Future: will be + V3
+
+Active'da kim qilganini bilganda; passive'da nima qilinganini ta'kidlash uchun.''',
+    examples: [
+      'The book was written in 1850.',
+      'English is spoken in many countries.',
+      'A new bridge will be built next year.',
+    ],
+  ),
+  GrammarLesson(
+    code: 'reported_speech',
+    title: 'Reported speech',
+    emoji: '💬',
+    summary: 'Boshqaning gapini yetkazish',
+    content: '''Birovning gapini qayta aytishda zamonlar siljiydi:
+
+- Present → Past: "I am tired" → He said he was tired.
+- Past → Past Perfect: "I went home" → She said she had gone home.
+- Will → Would: "I will help" → He said he would help.
+
+**Wh- savollar**: He asked where I lived.
+**Yes/No**: She asked if I was ready.
+
+Vaqt so'zlar ham o'zgaradi: today → that day, yesterday → the day before, tomorrow → the next day.''',
+    examples: [
+      'She said she was learning English.',
+      'He told me he had finished the project.',
+      'They asked if we could come tomorrow.',
+    ],
+  ),
+  GrammarLesson(
+    code: 'used_to',
+    title: 'Used to / Be used to',
+    emoji: '🔁',
+    summary: 'Past habits and current familiarity',
+    content: '''**used to + V** — o'tmishda doimiy edi, hozir yo'q:
+- I used to smoke (now I don't).
+- She used to live in Paris.
+
+**be used to + V-ing / noun** — o'rganib qolgan:
+- I am used to waking up early.
+- He is used to the cold weather.
+
+**get used to** — o'rganmoqda:
+- I'm getting used to working from home.''',
+    examples: [
+      'I used to play football every weekend.',
+      'She is used to spicy food now.',
+      'He is getting used to the new schedule.',
+    ],
+  ),
+  GrammarLesson(
+    code: 'gerund_infinitive',
+    title: 'Gerund vs Infinitive',
+    emoji: '🔣',
+    summary: 'V-ing yoki to + V',
+    content: '''**Gerund (V-ing)** keladigan fe'llar: enjoy, finish, suggest, mind, avoid, keep, practice.
+- I enjoy reading books.
+- She finished writing the report.
+
+**Infinitive (to + V)**: want, decide, hope, plan, promise, agree, learn.
+- I want to travel.
+- He decided to leave.
+
+**Ikkalasi ham**: like, love, hate, start, begin, continue, prefer.
+- I like swimming. / I like to swim.''',
+    examples: [
+      'She enjoys cooking traditional dishes.',
+      'I decided to study harder this year.',
+      'Stop smoking — it\'s bad for you.',
+    ],
+  ),
+  GrammarLesson(
+    code: 'phrasal_verbs',
+    title: 'Phrasal verbs',
+    emoji: '🧩',
+    summary: 'Verb + particle combos',
+    content: '''Phrasal verb — fe'l + predlog/qo'shimcha, ma'nosi o'zgaradi:
+
+- **give up** — voz kechmoq: Don\'t give up!
+- **look after** — qaramoq: She looks after her grandmother.
+- **turn on/off** — yoqmoq/o'chirmoq: Turn off the light.
+- **find out** — bilib olmoq: I'll find out the truth.
+- **put up with** — chidamoq: I can't put up with this noise.
+
+Eng ko'p ishlatiladiganlardan 100 tasini yodlash B1-B2 darajaga olib chiqadi.''',
+    examples: [
+      'I gave up smoking last year.',
+      'Can you look after the kids tonight?',
+      'I won\'t put up with this anymore.',
+    ],
+  ),
+  GrammarLesson(
+    code: 'relative_clauses',
+    title: 'Relative clauses',
+    emoji: '🔗',
+    summary: 'who / which / that / whose',
+    content: '''Tasviriy ergash gaplar:
+
+- **who** — odam: The man who called you is here.
+- **which** — narsa: The book which I bought is interesting.
+- **that** — odam yoki narsa: The car that I want is red.
+- **whose** — egalik: She is the woman whose dog barked.
+- **where** — joy: This is the cafe where we met.
+
+**Defining** (zarur) — vergulsiz.
+**Non-defining** (qo'shimcha) — vergul bilan.''',
+    examples: [
+      'The teacher who teaches us English is friendly.',
+      'I love books which are about history.',
+      'My friend, whose mother is a doctor, is studying medicine.',
+    ],
+  ),
+  GrammarLesson(
+    code: 'so_such',
+    title: 'So / Such / Too / Enough',
+    emoji: '🎚️',
+    summary: 'Intensifiers',
+    content: '''**so + adjective/adverb**: It's so hot today!
+**such + (a) + adjective + noun**: It's such a beautiful day!
+
+**too + adjective** (haddan tashqari, salbiy): The tea is too hot to drink.
+**adjective + enough** (yetarli, ijobiy): The tea is hot enough.
+**enough + noun**: We have enough time.
+
+Farqi: too — yomon ortiqcha; enough — kerakli miqdor.''',
+    examples: [
+      'She is so kind to everyone.',
+      'This box is too heavy to carry.',
+      'Do we have enough food for the party?',
+    ],
+  ),
+  GrammarLesson(
+    code: 'time_clauses',
+    title: 'When / While / As soon as',
+    emoji: '⏰',
+    summary: 'Vaqt ergash gaplari',
+    content: '''**when** — qachon, paytida: When I was young, I played football.
+**while** — paytida (uzoq harakat): She read while he cooked.
+**as soon as** — bilan birga, darrov: Call me as soon as you arrive.
+**before / after**: Brush your teeth before you sleep.
+**until / till**: Wait here until I come back.
+
+Asosiy qoida: vaqt ergash gaplarida **kelajak zamon ishlatilmaydi** — Present Simple keladi.
+- ✗ When I will see her, I will tell her.
+- ✓ When I see her, I will tell her.''',
+    examples: [
+      'I\'ll call you when I arrive.',
+      'She was sleeping while I was studying.',
+      'As soon as you finish, let me know.',
+    ],
+  ),
+  GrammarLesson(
+    code: 'modals_perfect',
+    title: 'Modal perfect (should have, must have)',
+    emoji: '🕰',
+    summary: 'O\'tmishdagi taxmin/afsus',
+    content: '''**should have + V3** — afsus, o'tmishdagi tavsiya:
+- You should have studied harder. (lekin qilmadingiz)
+
+**must have + V3** — aniq taxmin:
+- The ground is wet — it must have rained.
+
+**could have + V3** — imkoniyat bor edi:
+- I could have helped if you'd asked.
+
+**might have + V3** — ehtimol:
+- He might have forgotten the meeting.
+
+**shouldn't have / couldn't have** — salbiy.''',
+    examples: [
+      'You should have called me yesterday.',
+      'She must have left already.',
+      'I could have won the race.',
+    ],
+  ),
+  GrammarLesson(
+    code: 'subjunctive_wish',
+    title: 'I wish / If only',
+    emoji: '🌟',
+    summary: 'Xohish, afsus',
+    content: '''**I wish + Past Simple** — hozirgi xohish (haqiqat emas):
+- I wish I had more money. (lekin yo'q)
+
+**I wish + Past Perfect** — o'tmishdagi afsus:
+- I wish I had studied medicine. (lekin qilmadim)
+
+**I wish + would** — boshqa odam xulqi:
+- I wish he would stop smoking.
+
+**If only** — kuchliroq variant: If only I were taller!''',
+    examples: [
+      'I wish I lived near the sea.',
+      'I wish I hadn\'t said that yesterday.',
+      'If only I could speak French!',
+    ],
+  ),
+  GrammarLesson(
+    code: 'reading_skills',
+    title: 'Connectors (linking words)',
+    emoji: '🔗',
+    summary: 'Bog\'lovchi so\'zlar',
+    content: '''**Ketma-ketlik**: first, then, next, after that, finally
+**Sabab**: because, since, as, due to, owing to
+**Natija**: so, therefore, as a result, consequently
+**Qarama-qarshi**: but, however, although, despite, nevertheless
+**Qo'shimcha**: also, in addition, moreover, furthermore
+**Misol**: for example, such as, for instance
+**Xulosa**: in conclusion, to sum up, overall
+
+IELTS Writing va Speaking'da bu so'zlar band scoreni 0.5-1.0 ga oshiradi.''',
+    examples: [
+      'First, we visited the museum. Then we had lunch.',
+      'Although it was raining, we went outside.',
+      'In conclusion, technology has changed our lives.',
+    ],
+  ),
 ];

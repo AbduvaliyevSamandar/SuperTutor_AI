@@ -1,5 +1,6 @@
 """Hearts / XP / gems / daily-goal endpoints."""
-from datetime import date, datetime, timedelta, timezone
+from datetime import date as _date_module_date, datetime, timedelta, timezone
+date = _date_module_date
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -245,6 +246,49 @@ def award_xp(
         daily_target_xp=goal["target_xp"],
         daily_goal_reached=reached_now,
     )
+
+
+@router.post("/currency/use-streak-freeze", response_model=CurrencyResponse)
+def use_freeze(user_id: str = Depends(require_user_id)) -> CurrencyResponse:
+    client = _db()
+    row = _ensure_currency_row(client, user_id)
+    if (row.get("streak_freezes") or 0) <= 0:
+        raise HTTPException(status_code=402, detail="Streak freezeingiz yo'q")
+    new_freezes = (row.get("streak_freezes") or 0) - 1
+    client.table("user_currency").update(
+        {"streak_freezes": new_freezes}
+    ).eq("user_id", user_id).execute()
+    # Also extend last_active_date by 1 day to preserve streak
+    try:
+        client.table("profiles").update(
+            {"last_active_date": date.today().isoformat()}
+        ).eq("user_id", user_id).execute()
+    except Exception:
+        pass
+    row["streak_freezes"] = new_freezes
+    goal = _today_goal(client, user_id)
+    return _to_response(row, goal)
+
+
+@router.post("/currency/buy-streak-freeze", response_model=CurrencyResponse)
+def buy_freeze(user_id: str = Depends(require_user_id)) -> CurrencyResponse:
+    """Buy 1 streak-freeze for 200 gems."""
+    cost = 200
+    client = _db()
+    row = _ensure_currency_row(client, user_id)
+    if row["gems"] < cost:
+        raise HTTPException(
+            status_code=402,
+            detail=f"Yetarli gemma yo'q ({row['gems']}/{cost})",
+        )
+    client.table("user_currency").update({
+        "gems": row["gems"] - cost,
+        "streak_freezes": (row.get("streak_freezes") or 0) + 1,
+    }).eq("user_id", user_id).execute()
+    row["gems"] = row["gems"] - cost
+    row["streak_freezes"] = (row.get("streak_freezes") or 0) + 1
+    goal = _today_goal(client, user_id)
+    return _to_response(row, goal)
 
 
 @router.post("/currency/set-goal", response_model=CurrencyResponse)

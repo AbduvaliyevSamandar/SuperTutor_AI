@@ -5,8 +5,11 @@ import '../../core/theme.dart';
 import '../achievements/achievements_screen.dart';
 import '../exercises/cloze_screen.dart';
 import '../exercises/listening_screen.dart';
+import '../camera/camera_dictionary_screen.dart';
 import '../friends/friends_screen.dart';
 import '../grammar/grammar_screen.dart';
+import '../podcast/podcast_screen.dart';
+import '../vocab/vocab_topics_screen.dart';
 import '../ielts/ielts_listening_screen.dart';
 import '../ielts/ielts_mock_test_screen.dart';
 import '../ielts/ielts_reading_screen.dart';
@@ -133,6 +136,48 @@ class LearnScreen extends StatelessWidget {
             children: [
               Expanded(
                 child: _ExerciseTile(
+                  emoji: '📷',
+                  title: 'Kamera lug\'at',
+                  subtitle: 'Suratga ol, nom o\'rgan',
+                  color: AppColors.secondary,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                        builder: (_) => const CameraDictionaryScreen()),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _ExerciseTile(
+                  emoji: '📚',
+                  title: 'Mavzular lug\'ati',
+                  subtitle: '8 mavzu',
+                  color: AppColors.primary,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                        builder: (_) => const VocabTopicsScreen()),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _ExerciseTile(
+                  emoji: '🎙️',
+                  title: 'Kunlik podcast',
+                  subtitle: '~5 daq tinglash',
+                  color: AppColors.fire,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const PodcastScreen()),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _ExerciseTile(
                   emoji: '📖',
                   title: 'Hikoyalar',
                   subtitle: 'O\'qib tushunish',
@@ -147,7 +192,7 @@ class LearnScreen extends StatelessWidget {
                 child: _ExerciseTile(
                   emoji: '📐',
                   title: 'Grammatika',
-                  subtitle: '8 mavzu',
+                  subtitle: '17 mavzu',
                   color: AppColors.secondary,
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(
