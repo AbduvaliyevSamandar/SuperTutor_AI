@@ -1,0 +1,25 @@
+name: Render keep-alive
+
+# Pings /health every 13 minutes (Render sleeps after 15) as a backup to UptimeRobot.
+# GitHub Actions free tier = 2000 min/mo. 4 calls/hour * 24h * 30d = ~3 min/day = ~90 min/mo. Safe.
+
+on:
+  schedule:
+    - cron: "*/13 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Ping API health
+        run: |
+          for i in 1 2 3; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 45 \
+              https://supertutor-api.onrender.com/api/v1/health)
+            echo "Attempt $i: HTTP $code"
+            if [ "$code" = "200" ]; then exit 0; fi
+            sleep 5
+          done
+          exit 1
