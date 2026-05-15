@@ -1,28 +1,51 @@
 # Render Backend Keep-Alive
 
-Render free tier suspends the API after **15 minutes of inactivity**, and the
-next request blocks for 30–50 s while it cold-starts. That's the #1 source of
-visible exceptions in the app.
+Render free tier suspends the API after **15 minutes of inactivity**. Next request blocks 30-50s while cold-starting. This was the #1 source of visible errors in the app.
 
-## Solution: UptimeRobot (free)
+## 🚀 Solution: UptimeRobot (bepul, 5 daqiqada)
 
-1. Sign up: https://uptimerobot.com (free, no card)
-2. **Add New Monitor → HTTP(s)**
-3. Friendly name: `SuperTutor API`
-4. URL: `https://supertutor-api.onrender.com/api/v1/health`
-5. Monitoring interval: **5 minutes** (free tier allows down to 5 min)
-6. Save
+### Aniq qadamlar
 
-Now the API gets a request every 5 minutes — it never falls asleep. Cold
-starts gone.
+1. **Sign up** (no card needed): https://uptimerobot.com/signUp
+2. Email + parol → **Register for FREE**
+3. Confirm email → kirish
+4. Dashboard ochiladi → **Add New Monitor** (yashil tugma)
+5. Sozlash:
+   - **Monitor Type**: `HTTP(s)`
+   - **Friendly Name**: `SuperTutor API`
+   - **URL (or IP)**: `https://supertutor-api.onrender.com/api/v1/health`
+   - **Monitoring Interval**: `5 minutes`
+   - Boshqalarni o'zgartirmang
+6. **Create Monitor** bosing
 
-## Bonus: same for the bot
-If you have `supertutor-bot` worker on Render, it has no HTTP endpoint, so
-this trick doesn't apply. Workers stay alive on the free tier as long as
-they keep emitting any output (the aiogram bot polls Telegram every few
-seconds, which counts).
+Tamom! Endi har 5 daqiqada UptimeRobot `/health` so'rov yuboradi → Render uyg'oq turadi → cold start g'oyib bo'ladi.
 
-## Verify
+### Verifikatsiya
 
-After 24 h of UptimeRobot pings, open the app — it should respond instantly,
-no 30-second wait, no warmup overlay.
+24 soatdan keyin:
+- App ochish → darhol ishlaydi (avval 30s kutardi)
+- Profile/stats/leaderboard ekranlari instant
+- Hech qanday "Server uyg'onmoqda" toast'i ko'rinmaydi
+
+### Bonus: 2 ta monitor
+
+Frontend ham bor:
+- **Friendly Name**: `SuperTutor Web`
+- **URL**: `https://supertutor-web.onrender.com`
+
+Lekin web static — uxlamaydi. Bu monitor faqat uptime statistika uchun.
+
+### UptimeRobot Free tier limitlar
+
+- 50 ta monitor
+- 5 daqiqalik minimum interval (bizga yetadi)
+- 24 oylik storage
+- SMS yo'q (email bor)
+
+Yetadi.
+
+## Bonus: GitHub Actions ham keep-alive sifatida
+
+Agar UptimeRobot ham ishlamasa, GitHub Actions har 14 daqiqada ping yuborishi mumkin (cron schedule). Lekin GitHub Actions free tier oyiga 2000 daqiqa — 24/7 ping uchun yetmaydi (oyiga ~3000 daqiqa kerak).
+
+UptimeRobot eng ishonchli.

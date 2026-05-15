@@ -8,6 +8,7 @@ import '../../widgets/duo_button.dart';
 import '../../widgets/haptics.dart';
 import '../../widgets/stat_chip.dart';
 import '../../widgets/streak_banner.dart';
+import '../../widgets/animated_mascot_pro.dart';
 import '../auth/auth_controller.dart';
 import '../currency/currency_controller.dart';
 import '../daily/daily_lesson_card.dart';
@@ -130,7 +131,7 @@ class SkillTreeScreen extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(0, 8, 0, 32),
           children: [
             const SizedBox(height: 8),
-            const Center(child: AnimatedMascot(size: 90)),
+            const Center(child: AnimatedMascotPro(size: 96)),
             const SizedBox(height: 12),
             if (auth.isAuthenticated && currency != null)
               Padding(
