@@ -19,6 +19,7 @@ import '../srs/srs_screen.dart';
 import '../stories/stories_screen.dart';
 import '../camera/camera_dictionary_screen.dart';
 import '../achievements/achievements_screen.dart';
+import '../commute/commute_screen.dart';
 import 'word_of_the_day.dart';
 
 /// Modern AI-tutor home dashboard (inspired by Brilliant, Babbel, Headspace, Khanmigo).
@@ -838,6 +839,15 @@ class _DiscoverRow extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         children: [
+          _DiscoverTile(
+            emoji: '🎧',
+            title: 'Yo\'lda mashq',
+            subtitle: 'Hands-free audio · 10 daq',
+            gradient: const [Color(0xFF0EA5E9), Color(0xFF1E40AF)],
+            onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const CommuteScreen())),
+          ),
+          const SizedBox(width: 12),
           _DiscoverTile(
             emoji: '🥇',
             title: 'Leaderboard',

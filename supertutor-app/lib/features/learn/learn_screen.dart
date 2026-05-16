@@ -371,9 +371,18 @@ class LearnScreen extends StatelessWidget {
               final s = scenarios[i];
               return _ScenarioCard(
                 scenario: s,
-                onTap: () => context.push(
-                  '/chat/${s.subject}?seed=${Uri.encodeComponent(s.openingUserMessage)}',
-                ),
+                onTap: () {
+                  final params = <String, String>{
+                    'seed': s.openingUserMessage,
+                  };
+                  if (s.role.isNotEmpty) params['role'] = s.role;
+                  if (s.goal.isNotEmpty) params['goal'] = s.goal;
+                  final qs = params.entries
+                      .map((e) =>
+                          '${e.key}=${Uri.encodeQueryComponent(e.value)}')
+                      .join('&');
+                  context.push('/chat/${s.subject}?$qs');
+                },
               );
             },
           ),

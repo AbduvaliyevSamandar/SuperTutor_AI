@@ -21,6 +21,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, state) => ChatScreen(
           subject: state.pathParameters['subject'] ?? 'english',
           seedMessage: state.uri.queryParameters['seed'],
+          scenarioRole: state.uri.queryParameters['role'],
+          scenarioGoal: state.uri.queryParameters['goal'],
         ),
       ),
     ],

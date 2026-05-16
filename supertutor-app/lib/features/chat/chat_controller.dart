@@ -29,7 +29,16 @@ class ChatController extends StateNotifier<ChatState> {
   final ChatRepository _repo;
   final String subject;
 
+  // Roleplay context, set once at session start when launched from a Scenario.
+  String? scenarioRole;
+  String? scenarioGoal;
+
   ChatController(this._repo, this.subject) : super(const ChatState());
+
+  void setScenario({String? role, String? goal}) {
+    scenarioRole = role;
+    scenarioGoal = goal;
+  }
 
   Future<void> send(String userText) async {
     if (userText.trim().isEmpty || state.sending) return;
@@ -40,7 +49,12 @@ class ChatController extends StateNotifier<ChatState> {
     state = state.copyWith(messages: updated, sending: true, error: null);
 
     try {
-      final reply = await _repo.send(subject: subject, messages: updated);
+      final reply = await _repo.send(
+        subject: subject,
+        messages: updated,
+        scenarioRole: scenarioRole,
+        scenarioGoal: scenarioGoal,
+      );
       state = state.copyWith(
         messages: [...updated, ChatMessage(role: 'assistant', content: reply)],
         sending: false,

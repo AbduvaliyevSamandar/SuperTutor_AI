@@ -42,6 +42,22 @@ def chat(
         system += f"\nLearner CEFR level: {req.level}."
     system += fetch_personalization(user_id, req.subject.lower())
 
+    if req.scenario_role:
+        system += (
+            f"\n\nROLEPLAY MODE: You are playing the role of {req.scenario_role}. "
+            "Stay in character. Use natural conversational language fitting that role. "
+            "Do NOT break character to teach grammar mid-conversation."
+        )
+        if req.scenario_goal:
+            system += (
+                f"\nThe learner's goal in this scenario: {req.scenario_goal}. "
+                "Guide them toward this goal naturally."
+            )
+        system += (
+            "\nAfter every 4-5 exchanges, briefly add a [TUTOR NOTE: ...] line "
+            "in Uzbek with 1 correction or vocabulary tip, then continue in role."
+        )
+
     messages = [{"role": "system", "content": system}]
     messages.extend([m.model_dump() for m in req.messages])
 

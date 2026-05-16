@@ -23,7 +23,15 @@ import 'chat_repository.dart';
 class ChatScreen extends ConsumerStatefulWidget {
   final String subject;
   final String? seedMessage;
-  const ChatScreen({super.key, required this.subject, this.seedMessage});
+  final String? scenarioRole;
+  final String? scenarioGoal;
+  const ChatScreen({
+    super.key,
+    required this.subject,
+    this.seedMessage,
+    this.scenarioRole,
+    this.scenarioGoal,
+  });
 
   @override
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
@@ -53,6 +61,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _startSession();
+      if (widget.scenarioRole != null || widget.scenarioGoal != null) {
+        ref
+            .read(chatControllerProvider(widget.subject).notifier)
+            .setScenario(
+              role: widget.scenarioRole,
+              goal: widget.scenarioGoal,
+            );
+      }
       final seed = widget.seedMessage;
       if (seed != null && seed.trim().isNotEmpty) {
         _input.text = seed;

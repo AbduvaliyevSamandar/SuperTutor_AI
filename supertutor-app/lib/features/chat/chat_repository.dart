@@ -12,12 +12,16 @@ class ChatRepository {
     required String subject,
     required List<ChatMessage> messages,
     String? level,
+    String? scenarioRole,
+    String? scenarioGoal,
   }) async {
     final response = await _dio.post(
       '/chat',
       data: {
         'subject': subject,
         if (level != null) 'level': level,
+        if (scenarioRole != null) 'scenario_role': scenarioRole,
+        if (scenarioGoal != null) 'scenario_goal': scenarioGoal,
         'messages': messages.map((m) => m.toJson()).toList(),
       },
     );

@@ -56,6 +56,30 @@ class _SrsReviewScreenState extends ConsumerState<SrsReviewScreen> {
     }
   }
 
+  Future<void> _generatePersonalized() async {
+    setState(() => _loading = true);
+    try {
+      final r = await ref.read(dioProvider).post(
+        '/vocab/personalized/generate',
+        data: {'language': 'english', 'level': 'A2', 'n_words': 50},
+      );
+      final inserted = (r.data['inserted'] as int?) ?? 0;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$inserted ta yangi so\'z qo\'shildi')),
+        );
+      }
+      await _load();
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = 'Yaratib bo\'lmadi: $e';
+        });
+      }
+    }
+  }
+
   Future<void> _rate(int rating) async {
     if (_index >= _words.length) return;
     final id = _words[_index]['id'] as String;
@@ -92,7 +116,7 @@ class _SrsReviewScreenState extends ConsumerState<SrsReviewScreen> {
                   child: Text(_error!, textAlign: TextAlign.center),
                 ))
               : _words.isEmpty
-                  ? const _EmptyState()
+                  ? _EmptyState(onGenerate: _generatePersonalized)
                   : _index >= _words.length
                       ? _DoneState(reviewed: _words.length, onAgain: _load)
                       : _buildCard(),
@@ -204,21 +228,28 @@ class _SrsReviewScreenState extends ConsumerState<SrsReviewScreen> {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState();
+  final VoidCallback onGenerate;
+  const _EmptyState({required this.onGenerate});
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Padding(
-        padding: EdgeInsets.all(24),
+        padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('📚', style: TextStyle(fontSize: 56)),
-            SizedBox(height: 12),
-            Text(
-              'Hozircha takrorlanadigan so\'z yo\'q.\nLug\'atda so\'z saqlasangiz, bu yerda paydo bo\'ladi.',
+            const Text('📚', style: TextStyle(fontSize: 56)),
+            const SizedBox(height: 12),
+            const Text(
+              'Hozircha takrorlanadigan so\'z yo\'q.\nLug\'atdan saqlang yoki shaxsiy boshlang\'ich to\'plamni AI tuzib bersin.',
               textAlign: TextAlign.center,
               style: TextStyle(color: AppColors.inkLight),
+            ),
+            const SizedBox(height: 16),
+            DuoButton(
+              label: '✨ AI boshlang\'ich to\'plam yarat',
+              variant: DuoButtonVariant.primary,
+              onPressed: onGenerate,
             ),
           ],
         ),

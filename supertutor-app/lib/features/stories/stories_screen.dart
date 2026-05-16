@@ -9,6 +9,7 @@ import '../../widgets/sound_effects.dart';
 import '../auth/auth_controller.dart';
 import '../chat/chat_repository.dart';
 import '../currency/currency_controller.dart';
+import '../../widgets/grammar_tip_card.dart';
 
 class StoriesScreen extends ConsumerStatefulWidget {
   const StoriesScreen({super.key});
@@ -147,6 +148,8 @@ class _StoriesScreenState extends ConsumerState<StoriesScreen> {
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
+        const GrammarTipCard(),
+        const SizedBox(height: 8),
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
