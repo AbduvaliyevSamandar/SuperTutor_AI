@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/theme.dart';
 import '../../widgets/duo_button.dart';
+import '../profile/settings_storage.dart';
 
 const String onboardedKey = 'onboarded_v1';
 
@@ -17,19 +19,20 @@ Future<void> markOnboarded() async {
   await p.setBool(onboardedKey, true);
 }
 
-class OnboardingScreen extends StatefulWidget {
+class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
 
   @override
-  State<OnboardingScreen> createState() => _OnboardingScreenState();
+  ConsumerState<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
-class _OnboardingScreenState extends State<OnboardingScreen> {
+class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final _pager = PageController();
   int _page = 0;
   String? _goal;
   String? _level;
   String? _learnLang;
+  int _dailyMin = 10;
 
   static const _goals = [
     ('🎓', 'IELTS / sertifikat'),
@@ -54,6 +57,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     ('📐', 'math', 'Matematika'),
   ];
 
+  static const _dailyOptions = [
+    (5, '5 daqiqa', 'Yengil'),
+    (10, '10 daqiqa', 'Oddiy'),
+    (20, '20 daqiqa', 'Jiddiy'),
+    (30, '30 daqiqa', 'Mukammal'),
+  ];
+
   bool get _canNext {
     if (_page == 1 && _learnLang == null) return false;
     if (_page == 2 && _goal == null) return false;
@@ -68,6 +78,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Future<void> _finish() async {
+    try {
+      await ref.read(settingsControllerProvider.notifier).setLearnProfile(
+            subject: _learnLang,
+            goal: _goal,
+            level: _level,
+            dailyGoalMin: _dailyMin,
+          );
+    } catch (_) {}
     await markOnboarded();
     if (!mounted) return;
     context.go('/');
@@ -79,7 +97,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            _ProgressBar(page: _page, total: 5),
+            _ProgressBar(page: _page, total: 6),
             Expanded(
               child: PageView(
                 controller: _pager,
@@ -102,18 +120,27 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     onSelect: (l) => setState(() => _level = l),
                     levels: _levels,
                   ),
-                  _ReadyPage(goal: _goal, level: _level),
+                  _DailyGoalPage(
+                    selected: _dailyMin,
+                    onSelect: (m) => setState(() => _dailyMin = m),
+                    options: _dailyOptions,
+                  ),
+                  _ReadyPage(
+                    goal: _goal,
+                    level: _level,
+                    dailyMin: _dailyMin,
+                  ),
                 ],
               ),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
               child: DuoButton(
-                label: _page == 4 ? 'Boshlash 🚀' : 'Davom etish',
+                label: _page == 5 ? 'Boshlash 🚀' : 'Davom etish',
                 onPressed: !_canNext
                     ? null
                     : () {
-                        if (_page == 4) {
+                        if (_page == 5) {
                           _finish();
                         } else {
                           _pager.nextPage(
@@ -451,10 +478,105 @@ class _LevelPage extends StatelessWidget {
   }
 }
 
+class _DailyGoalPage extends StatelessWidget {
+  final int selected;
+  final ValueChanged<int> onSelect;
+  final List<(int, String, String)> options;
+  const _DailyGoalPage({
+    required this.selected,
+    required this.onSelect,
+    required this.options,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(28, 8, 28, 24),
+      children: [
+        const SizedBox(height: 24),
+        Text('Kunlik maqsad',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.headlineMedium),
+        const SizedBox(height: 8),
+        const Text(
+          'Har kuni qancha vaqt o\'qiy olasiz?',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+              color: AppColors.inkLight, fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 32),
+        ...options.map((o) {
+          final (min, label, descr) = o;
+          final isSelected = selected == min;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: () => onSelect(min),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? AppColors.fire.withValues(alpha: 0.1)
+                      : AppColors.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isSelected ? AppColors.fire : AppColors.border,
+                    width: 2,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: isSelected ? AppColors.fire : AppColors.bg,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text('⏱',
+                          style: TextStyle(
+                              fontSize: 22,
+                              color: isSelected ? Colors.white : null)),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(label,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 16)),
+                          Text(descr,
+                              style: const TextStyle(
+                                  color: AppColors.inkLight,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13)),
+                        ],
+                      ),
+                    ),
+                    if (isSelected)
+                      const Icon(Icons.check_circle,
+                          color: AppColors.fire, size: 22),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }),
+      ],
+    );
+  }
+}
+
 class _ReadyPage extends StatelessWidget {
   final String? goal;
   final String? level;
-  const _ReadyPage({this.goal, this.level});
+  final int dailyMin;
+  const _ReadyPage({this.goal, this.level, required this.dailyMin});
 
   @override
   Widget build(BuildContext context) {
@@ -469,29 +591,34 @@ class _ReadyPage extends StatelessWidget {
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.headlineMedium),
           const SizedBox(height: 14),
-          if (goal != null || level != null)
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Column(
-                children: [
-                  if (goal != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Text('Maqsad: $goal',
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w700)),
-                    ),
-                  if (level != null)
-                    Text('Daraja: $level',
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Column(
+              children: [
+                if (goal != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Text('🎯 Maqsad: $goal',
                         style: const TextStyle(
                             fontWeight: FontWeight.w700)),
-                ],
-              ),
+                  ),
+                if (level != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Text('📊 Daraja: $level',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w700)),
+                  ),
+                Text('⏱ Kuniga $dailyMin daqiqa',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w700)),
+              ],
             ),
+          ),
           const SizedBox(height: 16),
           const Text(
             'Birinchi suhbatdan boshlaymiz.\nMening AI ovozim bilan gaplashing.',

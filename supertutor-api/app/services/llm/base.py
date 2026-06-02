@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Iterator
 
 
 class LLMProvider(ABC):
@@ -9,6 +10,10 @@ class LLMProvider(ABC):
 
     @abstractmethod
     def chat(self, messages: list[dict]) -> str: ...
+
+    def chat_stream(self, messages: list[dict]) -> Iterator[str]:
+        """Yield text chunks. Default: fall back to non-streaming."""
+        yield self.chat(messages)
 
 
 class STTProvider(ABC):

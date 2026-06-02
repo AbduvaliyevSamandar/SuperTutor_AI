@@ -9,7 +9,7 @@ def _client() -> Groq | None:
     s = get_settings()
     if not s.groq_api_key:
         return None
-    return Groq(api_key=s.groq_api_key)
+    return Groq(api_key=s.groq_api_key, timeout=12.0, max_retries=0)
 
 
 class GroqLLM(LLMProvider):
@@ -32,6 +32,20 @@ class GroqLLM(LLMProvider):
             max_tokens=600,
         )
         return r.choices[0].message.content or ""
+
+    def chat_stream(self, messages: list[dict]):
+        assert self._client
+        stream = self._client.chat.completions.create(
+            model=self._model,
+            messages=messages,
+            temperature=0.6,
+            max_tokens=600,
+            stream=True,
+        )
+        for chunk in stream:
+            delta = chunk.choices[0].delta.content if chunk.choices else None
+            if delta:
+                yield delta
 
 
 class GroqSTT(STTProvider):

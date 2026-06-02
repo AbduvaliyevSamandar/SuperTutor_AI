@@ -4,15 +4,59 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/config.dart';
+import '../../core/error_messages.dart';
 import '../../core/theme.dart';
 import '../../widgets/duo_button.dart';
 import '../../core/api_client.dart';
 import '../auth/auth_controller.dart';
+import '../chat/chat_history_screen.dart';
 import '../currency/currency_controller.dart';
 import '../dashboard/stats_repository.dart';
 import '../feedback/feedback_screen.dart';
 import 'settings_storage.dart';
 import 'static_pages.dart';
+
+class _DailyXp {
+  final String date;
+  final int earned;
+  final int target;
+  _DailyXp({required this.date, required this.earned, required this.target});
+}
+
+final _weeklyActivityProvider =
+    FutureProvider.autoDispose<List<_DailyXp>>((ref) async {
+  final dio = ref.watch(dioProvider);
+  final r = await dio.get('/activity/weekly');
+  final days = (r.data['days'] as List<dynamic>?) ?? [];
+  return days
+      .map((e) => _DailyXp(
+            date: (e['date'] ?? '') as String,
+            earned: (e['earned_xp'] ?? 0) as int,
+            target: (e['target_xp'] ?? 20) as int,
+          ))
+      .toList();
+});
+
+({int level, int xpInLevel, int xpForNext}) _xpLevel(int totalXp) {
+  // Simple progression: every level needs 100 + 50*(level-1) more XP
+  // Level 1: 0..99, Level 2: 100..249, Level 3: 250..449, ...
+  var level = 1;
+  var consumed = 0;
+  while (true) {
+    final cost = 100 + 50 * (level - 1);
+    if (totalXp < consumed + cost) {
+      return (
+        level: level,
+        xpInLevel: totalXp - consumed,
+        xpForNext: cost,
+      );
+    }
+    consumed += cost;
+    level += 1;
+    if (level > 200) break;
+  }
+  return (level: level, xpInLevel: 0, xpForNext: 100);
+}
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -77,6 +121,8 @@ class ProfileScreen extends ConsumerWidget {
 
           // Quick stats row
           if (auth.isAuthenticated) ...[
+            _LevelBar(totalXp: currency?.xpTotal ?? 0),
+            const SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
@@ -107,7 +153,18 @@ class ProfileScreen extends ConsumerWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
+            _WeeklyChartCard(),
+            const SizedBox(height: 16),
+            _SettingsTile(
+              icon: Icons.history,
+              color: AppColors.secondary,
+              label: 'Suhbatlar tarixi',
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ChatHistoryScreen()),
+              ),
+            ),
+            const SizedBox(height: 8),
           ],
 
           // Account
@@ -467,6 +524,178 @@ class _LangPicker extends ConsumerWidget {
         }
       },
     );
+  }
+}
+
+class _LevelBar extends StatelessWidget {
+  final int totalXp;
+  const _LevelBar({required this.totalXp});
+
+  @override
+  Widget build(BuildContext context) {
+    final info = _xpLevel(totalXp);
+    final pct = info.xpForNext == 0
+        ? 0.0
+        : (info.xpInLevel / info.xpForNext).clamp(0.0, 1.0);
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: AppColors.primary.withValues(alpha: 0.25),
+          width: 1.5,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text('Daraja ${info.level}',
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13)),
+              ),
+              const Spacer(),
+              Text(
+                '${info.xpInLevel} / ${info.xpForNext} XP',
+                style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.primary,
+                    fontSize: 13),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: LinearProgressIndicator(
+              value: pct,
+              minHeight: 10,
+              backgroundColor: AppColors.border,
+              valueColor:
+                  const AlwaysStoppedAnimation<Color>(AppColors.primary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WeeklyChartCard extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(_weeklyActivityProvider);
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border, width: 1.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('14 kunlik faoliyat',
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 100,
+            child: async.when(
+              loading: () => const Center(
+                child: SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+              error: (e, _) => Center(
+                child: Text(
+                  friendlyError(e),
+                  style: const TextStyle(
+                      color: AppColors.inkLight,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12),
+                ),
+              ),
+              data: (days) => _BarChart(days: days),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BarChart extends StatelessWidget {
+  final List<_DailyXp> days;
+  const _BarChart({required this.days});
+
+  @override
+  Widget build(BuildContext context) {
+    if (days.isEmpty) {
+      return const Center(
+        child: Text('Hozircha ma\'lumot yo\'q',
+            style: TextStyle(
+                color: AppColors.inkLight, fontWeight: FontWeight.w600)),
+      );
+    }
+    final maxVal = days
+        .map((d) => d.earned > d.target ? d.earned : d.target)
+        .fold<int>(0, (a, b) => a > b ? a : b)
+        .clamp(20, 99999);
+
+    return LayoutBuilder(builder: (context, c) {
+      final barWidth = (c.maxWidth / days.length) - 4;
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: days.map((d) {
+          final earnedH =
+              (d.earned / maxVal * 80).clamp(0.0, 80.0).toDouble();
+          final reached = d.earned >= d.target && d.target > 0;
+          return Container(
+            width: barWidth.clamp(6.0, 24.0),
+            margin: const EdgeInsets.symmetric(horizontal: 2),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                if (reached)
+                  const Text('✓',
+                      style: TextStyle(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 10)),
+                const SizedBox(height: 2),
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 350),
+                  height: earnedH > 4 ? earnedH : 4,
+                  decoration: BoxDecoration(
+                    color: reached
+                        ? AppColors.primary
+                        : (d.earned > 0
+                            ? AppColors.gold
+                            : AppColors.border),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(4),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
+      );
+    });
   }
 }
 

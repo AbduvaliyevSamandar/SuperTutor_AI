@@ -59,6 +59,32 @@ def chat_with_fallback(messages: list[dict]) -> tuple[str, str]:
     )
 
 
+def stream_with_fallback(messages: list[dict]):
+    """Yield (chunk_text, provider_name). On first success, stream to completion.
+    If first provider fails before yielding anything, fall over to the next."""
+    errors: list[str] = []
+    for p in _llm_chain():
+        if not p.is_configured():
+            continue
+        try:
+            started = False
+            for chunk in p.chat_stream(messages):
+                if not chunk:
+                    continue
+                started = True
+                yield chunk, p.name
+            if started:
+                return
+            errors.append(f"{p.name}: empty stream")
+        except Exception as e:
+            logger.warning("LLM stream %s failed: %s", p.name, e)
+            errors.append(f"{p.name}: {type(e).__name__}: {e}")
+    raise AllProvidersFailed(
+        "No streaming LLM provider succeeded. "
+        + (" | ".join(errors) if errors else "None configured.")
+    )
+
+
 def transcribe_with_fallback(
     audio: bytes, filename: str = "audio.webm", language: str | None = None
 ) -> tuple[str, str]:

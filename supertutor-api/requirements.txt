@@ -12,3 +12,4 @@ edge-tts>=7.0,<8
 supabase>=2.10,<3
 python-dotenv>=1.0,<2
 sympy>=1.13,<2
+firebase-admin>=6.5,<7

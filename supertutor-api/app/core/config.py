@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     gemini_model: str = "gemini-2.0-flash"
     gemini_vision_model: str = "gemini-2.0-flash"
 
+    firebase_service_account_json: str = ""
+
     supabase_url: str = ""
     supabase_anon_key: str = ""
     supabase_service_key: str = ""

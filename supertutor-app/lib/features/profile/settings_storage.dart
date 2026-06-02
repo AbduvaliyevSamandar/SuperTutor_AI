@@ -7,11 +7,21 @@ class AppSettings {
   final bool soundsEnabled;
   final bool darkMode;
 
+  /// What the user picked in onboarding — used for default subject and prompts.
+  final String? learnSubject; // english | russian | german | turkish | math
+  final String? learnGoal;    // free text from onboarding
+  final String? cefrLevel;    // A1..C2
+  final int dailyGoalMin;     // 5 | 10 | 20 | 30
+
   const AppSettings({
     this.notifications = true,
     this.uiLanguage = 'uz',
     this.soundsEnabled = true,
     this.darkMode = false,
+    this.learnSubject,
+    this.learnGoal,
+    this.cefrLevel,
+    this.dailyGoalMin = 10,
   });
 
   AppSettings copyWith({
@@ -19,12 +29,20 @@ class AppSettings {
     String? uiLanguage,
     bool? soundsEnabled,
     bool? darkMode,
+    String? learnSubject,
+    String? learnGoal,
+    String? cefrLevel,
+    int? dailyGoalMin,
   }) =>
       AppSettings(
         notifications: notifications ?? this.notifications,
         uiLanguage: uiLanguage ?? this.uiLanguage,
         soundsEnabled: soundsEnabled ?? this.soundsEnabled,
         darkMode: darkMode ?? this.darkMode,
+        learnSubject: learnSubject ?? this.learnSubject,
+        learnGoal: learnGoal ?? this.learnGoal,
+        cefrLevel: cefrLevel ?? this.cefrLevel,
+        dailyGoalMin: dailyGoalMin ?? this.dailyGoalMin,
       );
 }
 
@@ -37,6 +55,10 @@ class SettingsController extends StateNotifier<AppSettings> {
   static const _kLang = 'pref_ui_lang';
   static const _kSounds = 'pref_sounds';
   static const _kDark = 'pref_dark_mode';
+  static const _kLearnSubject = 'pref_learn_subject';
+  static const _kLearnGoal = 'pref_learn_goal';
+  static const _kCefrLevel = 'pref_cefr_level';
+  static const _kDailyGoal = 'pref_daily_goal_min';
 
   Future<void> _load() async {
     final p = await SharedPreferences.getInstance();
@@ -45,7 +67,30 @@ class SettingsController extends StateNotifier<AppSettings> {
       uiLanguage: p.getString(_kLang) ?? 'uz',
       soundsEnabled: p.getBool(_kSounds) ?? true,
       darkMode: p.getBool(_kDark) ?? false,
+      learnSubject: p.getString(_kLearnSubject),
+      learnGoal: p.getString(_kLearnGoal),
+      cefrLevel: p.getString(_kCefrLevel),
+      dailyGoalMin: p.getInt(_kDailyGoal) ?? 10,
     );
+  }
+
+  Future<void> setLearnProfile({
+    String? subject,
+    String? goal,
+    String? level,
+    int? dailyGoalMin,
+  }) async {
+    state = state.copyWith(
+      learnSubject: subject,
+      learnGoal: goal,
+      cefrLevel: level,
+      dailyGoalMin: dailyGoalMin,
+    );
+    final p = await SharedPreferences.getInstance();
+    if (subject != null) await p.setString(_kLearnSubject, subject);
+    if (goal != null) await p.setString(_kLearnGoal, goal);
+    if (level != null) await p.setString(_kCefrLevel, level);
+    if (dailyGoalMin != null) await p.setInt(_kDailyGoal, dailyGoalMin);
   }
 
   Future<void> setDarkMode(bool v) async {

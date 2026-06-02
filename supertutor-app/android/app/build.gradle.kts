@@ -5,6 +5,12 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Apply google-services plugin only if google-services.json is present.
+// Otherwise the build fails on a fresh checkout without Firebase setup.
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
 android {
     namespace = "com.supertutor.supertutor_app"
     compileSdk = flutter.compileSdkVersion

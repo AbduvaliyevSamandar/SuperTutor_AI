@@ -11,6 +11,49 @@ from app.schemas.sessions import (
 router = APIRouter()
 
 
+@router.get("/sessions")
+def list_sessions(
+    user_id: str = Depends(require_user_id),
+    limit: int = 50,
+) -> dict:
+    """Return the user's recent chat sessions (newest first)."""
+    client = _db()
+    rows = safe_list(
+        client.table("sessions")
+        .select("id, subject, started_at, ended_at, messages_count, duration_seconds")
+        .eq("user_id", user_id)
+        .order("started_at", desc=True)
+        .limit(min(max(limit, 1), 200))
+    )
+    return {"items": rows}
+
+
+@router.get("/sessions/{session_id}/messages")
+def session_messages(
+    session_id: str,
+    user_id: str = Depends(require_user_id),
+) -> dict:
+    """Return chat messages for a given session, oldest first."""
+    client = _db()
+    # Verify session belongs to the requesting user
+    owner = safe_single(
+        client.table("sessions")
+        .select("user_id, subject")
+        .eq("id", session_id)
+        .maybe_single()
+    )
+    if not owner or owner.get("user_id") != user_id:
+        raise HTTPException(status_code=404, detail="Session not found")
+    rows = safe_list(
+        client.table("chat_messages")
+        .select("role, content, created_at")
+        .eq("session_id", session_id)
+        .order("created_at")
+        .limit(500)
+    )
+    return {"items": rows, "subject": owner.get("subject")}
+
+
 def _db():
     client = get_supabase_admin()
     if client is None:

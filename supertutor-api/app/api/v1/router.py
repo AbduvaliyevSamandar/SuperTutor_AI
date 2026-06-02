@@ -16,6 +16,7 @@ from app.api.v1.endpoints import (
     leaderboard,
     listening_test as listening_test_mod,
     mock_test,
+    notifications,
     podcast,
     pronunciation,
     quiz,
@@ -62,6 +63,7 @@ api_router.include_router(daily_lesson.router, tags=["daily"])
 api_router.include_router(friends.router, tags=["social"])
 api_router.include_router(podcast.router, tags=["learning"])
 api_router.include_router(feedback_mod.router, tags=["feedback"])
+api_router.include_router(notifications.router, tags=["notifications"])
 api_router.include_router(commute.router, tags=["learning"])
 api_router.include_router(teachback.router, tags=["learning"])
 api_router.include_router(vocab_personalized.router, tags=["srs"])

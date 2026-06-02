@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -10,12 +12,15 @@ import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
 
+import '../../core/error_messages.dart';
 import '../../core/theme.dart';
 import '../../widgets/avatar_view.dart';
+import '../../widgets/haptics.dart';
 import '../../widgets/sound_effects.dart';
 import '../auth/auth_controller.dart';
 import '../currency/currency_controller.dart';
 import '../dashboard/stats_repository.dart';
+import '../profile/settings_storage.dart';
 import 'chat_controller.dart';
 import 'chat_models.dart';
 import 'chat_repository.dart';
@@ -59,15 +64,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   @override
   void initState() {
     super.initState();
+    // Fire-and-forget warmup so the first user message is fast
+    ref.read(chatRepositoryProvider).warmup();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _startSession();
+      final ctrl =
+          ref.read(chatControllerProvider(widget.subject).notifier);
+      // Pass the learner's CEFR level so the AI tunes vocabulary difficulty
+      final level = ref.read(settingsControllerProvider).cefrLevel;
+      if (level != null && widget.subject != 'math') {
+        ctrl.setLevel(level);
+      }
       if (widget.scenarioRole != null || widget.scenarioGoal != null) {
-        ref
-            .read(chatControllerProvider(widget.subject).notifier)
-            .setScenario(
-              role: widget.scenarioRole,
-              goal: widget.scenarioGoal,
-            );
+        ctrl.setScenario(
+          role: widget.scenarioRole,
+          goal: widget.scenarioGoal,
+        );
       }
       final seed = widget.seedMessage;
       if (seed != null && seed.trim().isNotEmpty) {
@@ -84,6 +96,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           .read(statsRepositoryProvider)
           .startSession(widget.subject);
       _sessionStart = DateTime.now();
+      ref
+          .read(chatControllerProvider(widget.subject).notifier)
+          .setSessionId(_sessionId);
     } catch (_) {
       _sessionId = null;
     }
@@ -157,6 +172,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Future<void> _onSend() async {
     final text = _input.text.trim();
     if (text.isEmpty) return;
+    Haptics.tap();
     _input.clear();
     final ctrl = ref.read(chatControllerProvider(widget.subject).notifier);
     await ctrl.send(text);
@@ -323,7 +339,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       _input.text = text;
       await _onSend();
     } catch (e) {
-      _showMessage('STT xatosi: $e');
+      _showMessage(friendlyError(e));
     } finally {
       if (mounted) setState(() => _transcribing = false);
     }
@@ -333,14 +349,34 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (_analyzing) return;
     final XFile? file;
     try {
-      file = await _picker.pickImage(source: source, imageQuality: 85);
+      file = await _picker.pickImage(
+        source: source,
+        imageQuality: 85,
+        maxWidth: 1600,
+        maxHeight: 1600,
+      );
     } catch (e) {
       _showMessage('Rasm tanlash xatosi: $e');
       return;
     }
     if (file == null) return;
 
-    final bytes = await file.readAsBytes();
+    var bytes = await file.readAsBytes();
+    // Extra compression for large images: native platforms only
+    if (!kIsWeb && bytes.length > 600 * 1024) {
+      try {
+        final compressed = await FlutterImageCompress.compressWithList(
+          bytes,
+          quality: 75,
+          minWidth: 1280,
+          minHeight: 1280,
+          format: CompressFormat.jpeg,
+        );
+        if (compressed.isNotEmpty && compressed.length < bytes.length) {
+          bytes = compressed;
+        }
+      } catch (_) {}
+    }
     final ctrl = ref.read(chatControllerProvider(widget.subject).notifier);
 
     ctrl.appendUserMessage(
@@ -367,7 +403,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       _updateSession();
       _scrollToBottom();
     } catch (e) {
-      _showMessage('Vision xatosi: $e');
+      _showMessage(friendlyError(e));
     } finally {
       if (mounted) setState(() => _analyzing = false);
     }
@@ -458,6 +494,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final state = ref.watch(chatControllerProvider(widget.subject));
     final busy = state.sending || _transcribing || _analyzing;
 
+    // Auto-scroll as the streaming reply grows
+    ref.listen(chatControllerProvider(widget.subject), (prev, next) {
+      if (prev?.streamingText != next.streamingText &&
+          next.streamingText.isNotEmpty) {
+        _scrollToBottom();
+      }
+    });
+
     return Scaffold(
       appBar: AppBar(
         title: Row(
@@ -507,8 +551,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       fontSize: 13)),
             ),
           Expanded(
-            child: state.messages.isEmpty
-                ? _EmptyChat(subject: widget.subject, accent: _subjectColor)
+            child: state.messages.isEmpty && !state.sending
+                ? _EmptyChat(
+                    subject: widget.subject,
+                    accent: _subjectColor,
+                    onSuggestionTap: (text) async {
+                      _input.text = text;
+                      await _onSend();
+                    },
+                  )
                 : ListView.builder(
                     controller: _scroll,
                     padding: const EdgeInsets.symmetric(
@@ -516,6 +567,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     itemCount: state.messages.length + (state.sending ? 1 : 0),
                     itemBuilder: (context, i) {
                       if (i >= state.messages.length) {
+                        if (state.streamingText.isNotEmpty) {
+                          return _Bubble(
+                            message: ChatMessage(
+                                role: 'assistant',
+                                content: state.streamingText),
+                            accent: _subjectColor,
+                            streaming: true,
+                          );
+                        }
                         return _TypingBubble(accent: _subjectColor);
                       }
                       return _Bubble(
@@ -565,10 +625,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  _SendButton(
-                    enabled: !busy,
-                    onTap: busy ? null : _onSend,
-                  ),
+                  if (state.sending)
+                    _StopButton(
+                      onTap: () {
+                        Haptics.tap();
+                        ref
+                            .read(chatControllerProvider(widget.subject)
+                                .notifier)
+                            .stop();
+                      },
+                    )
+                  else
+                    _SendButton(
+                      enabled: !busy,
+                      onTap: busy ? null : _onSend,
+                    ),
                 ],
               ),
             ),
@@ -579,10 +650,102 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 }
 
+class _StopButton extends StatelessWidget {
+  final VoidCallback onTap;
+  const _StopButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.heart,
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: const SizedBox(
+          width: 48,
+          height: 48,
+          child: Icon(Icons.stop_rounded, color: Colors.white, size: 26),
+        ),
+      ),
+    );
+  }
+}
+
 class _Bubble extends StatelessWidget {
   final ChatMessage message;
   final Color accent;
-  const _Bubble({required this.message, required this.accent});
+  final bool streaming;
+  const _Bubble({
+    required this.message,
+    required this.accent,
+    this.streaming = false,
+  });
+
+  Future<void> _copyToClipboard(BuildContext context) async {
+    await Clipboard.setData(ClipboardData(text: message.content));
+    Haptics.success();
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Nusxalandi'),
+          duration: Duration(seconds: 1),
+        ),
+      );
+    }
+  }
+
+  void _showActions(BuildContext context) {
+    if (message.imageBytes != null) return;
+    Haptics.tap();
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => SafeArea(
+        child: Container(
+          margin: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.copy_rounded),
+                title: const Text('Nusxa olish',
+                    style: TextStyle(fontWeight: FontWeight.w700)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _copyToClipboard(context);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.share_rounded),
+                title: const Text('Ulashish',
+                    style: TextStyle(fontWeight: FontWeight.w700)),
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  await Clipboard.setData(
+                      ClipboardData(text: message.content));
+                  Haptics.success();
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                            'Nusxa olindi — boshqa ilovaga yapishtiring'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -609,48 +772,57 @@ class _Bubble extends StatelessWidget {
             const SizedBox(width: 8),
           ],
           Flexible(
-            child: Container(
-              padding: hasImage
-                  ? const EdgeInsets.all(6)
-                  : const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              constraints: BoxConstraints(
-                  maxWidth: MediaQuery.of(context).size.width * 0.78),
-              decoration: BoxDecoration(
-                color: isUser ? accent : AppColors.surface,
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(16),
-                  topRight: const Radius.circular(16),
-                  bottomLeft: Radius.circular(isUser ? 16 : 4),
-                  bottomRight: Radius.circular(isUser ? 4 : 16),
+            child: GestureDetector(
+              onLongPress: () => _showActions(context),
+              child: Container(
+                padding: hasImage
+                    ? const EdgeInsets.all(6)
+                    : const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width * 0.78),
+                decoration: BoxDecoration(
+                  color: isUser ? accent : AppColors.surface,
+                  borderRadius: BorderRadius.only(
+                    topLeft: const Radius.circular(16),
+                    topRight: const Radius.circular(16),
+                    bottomLeft: Radius.circular(isUser ? 16 : 4),
+                    bottomRight: Radius.circular(isUser ? 4 : 16),
+                  ),
+                  border: isUser
+                      ? null
+                      : Border.all(
+                          color: streaming
+                              ? accent.withValues(alpha: 0.4)
+                              : AppColors.border,
+                          width: 1.5,
+                        ),
                 ),
-                border: isUser
-                    ? null
-                    : Border.all(color: AppColors.border, width: 1.5),
+                child: hasImage
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.memory(
+                          Uint8List.fromList(message.imageBytes!),
+                          fit: BoxFit.cover,
+                        ),
+                      )
+                    : (isUser
+                        ? Text(
+                            message.content,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                              height: 1.35,
+                            ),
+                          )
+                        : MarkdownBody(
+                            data: message.content +
+                                (streaming ? ' ▋' : ''),
+                            styleSheet: _markdownStyle(context, accent),
+                            shrinkWrap: true,
+                            softLineBreak: true,
+                          )),
               ),
-              child: hasImage
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.memory(
-                        Uint8List.fromList(message.imageBytes!),
-                        fit: BoxFit.cover,
-                      ),
-                    )
-                  : (isUser
-                      ? Text(
-                          message.content,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 15,
-                            height: 1.35,
-                          ),
-                        )
-                      : MarkdownBody(
-                          data: message.content,
-                          styleSheet: _markdownStyle(context, accent),
-                          shrinkWrap: true,
-                          softLineBreak: true,
-                        )),
             ),
           ),
         ],
@@ -817,38 +989,138 @@ class _TypingBubbleState extends State<_TypingBubble>
 class _EmptyChat extends StatelessWidget {
   final String subject;
   final Color accent;
-  const _EmptyChat({required this.subject, required this.accent});
+  final ValueChanged<String>? onSuggestionTap;
+  const _EmptyChat({
+    required this.subject,
+    required this.accent,
+    this.onSuggestionTap,
+  });
+
+  List<String> get _suggestions {
+    switch (subject) {
+      case 'math':
+        return [
+          '🧮 2x + 5 = 13 — x ni toping',
+          '📐 Pifagor teoremasi nima?',
+          '✏️ 7 sinf algebra: kvadrat tenglama yechishga o\'rgating',
+        ];
+      case 'russian':
+        return [
+          '👋 Привет — keling tanishaylik',
+          '🍽️ Restoranda buyurtma berishni mashq qilamiz',
+          '📝 \'идти\' fe\'lini tushuntirib bering',
+        ];
+      case 'german':
+        return [
+          '👋 Hallo! — Selbstvorstellung mashqi',
+          '🚉 Sayohatda — vokzal mashq dialogi',
+          '📝 Der/Die/Das qoidasini tushuntiring',
+        ];
+      case 'turkish':
+        return [
+          '👋 Merhaba! Tanishuv suhbati',
+          '☕ Kafede buyurtma berishni mashq qilamiz',
+          '📝 \'-yor\' shaklini tushuntiring',
+        ];
+      default:
+        return [
+          '👋 Hi! Let\'s start a small talk in English',
+          '🍽️ Restaurant scenario — order food',
+          '📝 Explain past perfect tense with examples',
+        ];
+    }
+  }
+
+  String get _hint => subject == 'math'
+      ? 'Masala yozing, rasm yuklang yoki gapiring'
+      : 'Yozing, gapiring yoki quyidagi tavsiyalardan birini tanlang';
 
   @override
   Widget build(BuildContext context) {
-    final hint = subject == 'math'
-        ? 'Masala yozing yoki mikrofon orqali aytib bering'
-        : 'Hi! / How are you? deb yozing yoki gapiring';
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: accent.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-              ),
-              child: const Text('💬', style: TextStyle(fontSize: 40)),
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(24, 28, 24, 32),
+      children: [
+        Center(
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
             ),
-            const SizedBox(height: 16),
-            Text('Suhbatni boshlang',
-                style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 6),
-            Text(hint,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                    color: AppColors.inkLight, fontWeight: FontWeight.w600)),
-          ],
+            child: const Text('💬', style: TextStyle(fontSize: 40)),
+          ),
         ),
-      ),
+        const SizedBox(height: 16),
+        Text(
+          'Suhbatni boshlang',
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 6),
+        Text(
+          _hint,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: AppColors.inkLight,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 22),
+        const Text(
+          'TAVSIYALAR',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: AppColors.inkLight,
+            fontWeight: FontWeight.w800,
+            fontSize: 11,
+            letterSpacing: 0.8,
+          ),
+        ),
+        const SizedBox(height: 10),
+        ..._suggestions.map(
+          (s) => Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Material(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(14),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(14),
+                onTap: onSuggestionTap == null
+                    ? null
+                    : () {
+                        Haptics.tap();
+                        onSuggestionTap!(s.replaceFirst(RegExp(r'^\S+\s'), ''));
+                      },
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14),
+                    border:
+                        Border.all(color: AppColors.border, width: 1.5),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          s,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.ink,
+                            fontSize: 14,
+                            height: 1.35,
+                          ),
+                        ),
+                      ),
+                      Icon(Icons.arrow_forward_rounded,
+                          color: accent, size: 18),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

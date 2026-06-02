@@ -2,6 +2,8 @@
 between any source and target language pair (en, ru, de, tr, uz)."""
 import json
 import re
+from collections import OrderedDict
+from threading import Lock
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -9,6 +11,27 @@ from pydantic import BaseModel
 from app.core.security import current_user_id
 from app.core.supabase import get_supabase_admin
 from app.services.llm.orchestrator import AllProvidersFailed, chat_with_fallback
+
+
+_CACHE_MAX = 2000
+_cache: "OrderedDict[str, LookupResponse]" = OrderedDict()
+_cache_lock = Lock()
+
+
+def _cache_get(key: str):
+    with _cache_lock:
+        if key in _cache:
+            _cache.move_to_end(key)
+            return _cache[key]
+    return None
+
+
+def _cache_set(key: str, value) -> None:
+    with _cache_lock:
+        _cache[key] = value
+        _cache.move_to_end(key)
+        while len(_cache) > _CACHE_MAX:
+            _cache.popitem(last=False)
 
 router = APIRouter()
 
@@ -107,6 +130,11 @@ def lookup(
     if src == tgt:
         tgt = "uz" if src != "uz" else "en"
 
+    key = f"{word.strip().lower()}|{src}|{tgt}"
+    cached = _cache_get(key)
+    if cached is not None:
+        return cached
+
     messages = [
         {
             "role": "system",
@@ -122,7 +150,7 @@ def lookup(
 
     data = _extract_json(reply) or {}
 
-    return LookupResponse(
+    result = LookupResponse(
         word=word,
         source=src,
         target=tgt,
@@ -136,6 +164,9 @@ def lookup(
         ][:5],
         synonyms=[str(x) for x in (data.get("synonyms") or [])][:5],
     )
+    if result.translation != "—" and result.examples:
+        _cache_set(key, result)
+    return result
 
 
 @router.post("/dictionary/save")
