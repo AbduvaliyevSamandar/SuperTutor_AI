@@ -8,6 +8,7 @@ import '../../core/error_messages.dart';
 import '../../core/theme.dart';
 import '../../widgets/duo_button.dart';
 import '../../core/api_client.dart';
+import '../achievements/achievements_screen.dart';
 import '../auth/auth_controller.dart';
 import '../chat/chat_history_screen.dart';
 import '../currency/currency_controller.dart';
@@ -15,6 +16,7 @@ import '../dashboard/stats_repository.dart';
 import '../feedback/feedback_screen.dart';
 import 'settings_storage.dart';
 import 'static_pages.dart';
+import 'voice_picker_screen.dart';
 
 class _DailyXp {
   final String date;
@@ -164,6 +166,15 @@ class ProfileScreen extends ConsumerWidget {
                 MaterialPageRoute(builder: (_) => const ChatHistoryScreen()),
               ),
             ),
+            _SettingsTile(
+              icon: Icons.emoji_events_outlined,
+              color: AppColors.gold,
+              label: 'Yutuqlar',
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const AchievementsScreen()),
+              ),
+            ),
+            _StreakShieldTile(),
             const SizedBox(height: 8),
           ],
 
@@ -195,6 +206,14 @@ class ProfileScreen extends ConsumerWidget {
             color: AppColors.secondary,
             label: 'Interfeys tili',
             trailing: _LangPicker(),
+          ),
+          _SettingsTile(
+            icon: Icons.record_voice_over_outlined,
+            color: AppColors.primary,
+            label: 'AI ovozi',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const VoicePickerScreen()),
+            ),
           ),
           _SettingsTile(
             icon: Icons.dark_mode_outlined,
@@ -696,6 +715,131 @@ class _BarChart extends StatelessWidget {
         }).toList(),
       );
     });
+  }
+}
+
+class _StreakShieldTile extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final currency = ref.watch(currencyControllerProvider);
+    final shields = currency?.streakFreezes ?? 0;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border, width: 1.5),
+      ),
+      child: ListTile(
+        onTap: () => _showShop(context, ref, currency?.gems ?? 0, shields),
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: AppColors.fire.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: const Icon(Icons.shield_outlined, color: AppColors.fire),
+        ),
+        title: const Text(
+          'Streak qalqoni',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
+        subtitle: Text(
+          shields > 0
+              ? 'Sizda $shields ta qalqon — 1 kun o\'tkazib yuborsangiz streak saqlanadi'
+              : 'Streakni yo\'qotmaslik uchun zaxira',
+          style: const TextStyle(
+              color: AppColors.inkLight,
+              fontWeight: FontWeight.w600,
+              fontSize: 12),
+        ),
+        trailing: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: AppColors.gold.withValues(alpha: 0.18),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text(
+            '$shields 🛡',
+            style: const TextStyle(
+                color: AppColors.gold,
+                fontWeight: FontWeight.w800,
+                fontSize: 13),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showShop(BuildContext context, WidgetRef ref, int gems, int have) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => SafeArea(
+        child: Container(
+          margin: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('🛡', style: TextStyle(fontSize: 56)),
+              const SizedBox(height: 8),
+              Text('Streak qalqoni',
+                  style: Theme.of(ctx).textTheme.titleLarge),
+              const SizedBox(height: 8),
+              Text(
+                '1 kun mashq qila olmasangiz, qalqon avtomatik streakingizni saqlaydi. Sizda $have ta bor.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    color: AppColors.inkLight,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13),
+              ),
+              const SizedBox(height: 18),
+              DuoButton(
+                label: '200 💎 — Sotib olish (sizda $gems)',
+                variant: DuoButtonVariant.gold,
+                onPressed: gems < 200
+                    ? null
+                    : () async {
+                        Navigator.pop(ctx);
+                        try {
+                          final dio = ref.read(dioProvider);
+                          await dio.post('/currency/buy-streak-freeze');
+                          await ref
+                              .read(currencyControllerProvider.notifier)
+                              .refresh();
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content: Text(
+                                      'Streak qalqoni qo\'shildi 🛡')),
+                            );
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(friendlyError(e))),
+                            );
+                          }
+                        }
+                      },
+              ),
+              const SizedBox(height: 8),
+              DuoButton(
+                label: 'Yopish',
+                variant: DuoButtonVariant.outline,
+                onPressed: () => Navigator.pop(ctx),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

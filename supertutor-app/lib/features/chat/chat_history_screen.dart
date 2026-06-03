@@ -6,6 +6,9 @@ import 'package:go_router/go_router.dart';
 import '../../core/api_client.dart';
 import '../../core/error_messages.dart';
 import '../../core/theme.dart';
+import '../../widgets/skeleton.dart';
+import 'chat_models.dart';
+import 'chat_screen.dart';
 
 class ChatSession {
   final String id;
@@ -67,7 +70,10 @@ class ChatHistoryScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Suhbatlar tarixi')),
       body: async.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Padding(
+          padding: EdgeInsets.all(16),
+          child: SkeletonList(rows: 6, rowHeight: 74),
+        ),
         error: (e, _) => _ErrorView(
           message: friendlyError(e),
           onRetry: () => ref.invalidate(_sessionListProvider),
@@ -290,8 +296,26 @@ class _SessionDetailScreenState extends ConsumerState<SessionDetailScreen> {
     }
   }
 
+  void _continueChat() {
+    final msgs = _messages;
+    if (msgs == null || msgs.isEmpty) return;
+    final chatMsgs = msgs
+        .map((m) => ChatMessage(role: m.role, content: m.content))
+        .toList();
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => ChatScreen(
+          subject: widget.session.subject,
+          resumeSessionId: widget.session.id,
+          resumeMessages: chatMsgs,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final canContinue = _messages != null && _messages!.isNotEmpty;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Suhbat'),
@@ -303,6 +327,14 @@ class _SessionDetailScreenState extends ConsumerState<SessionDetailScreen> {
           ),
         ],
       ),
+      floatingActionButton: canContinue
+          ? FloatingActionButton.extended(
+              onPressed: _continueChat,
+              icon: const Icon(Icons.play_arrow_rounded),
+              label: const Text('Davom ettirish',
+                  style: TextStyle(fontWeight: FontWeight.w800)),
+            )
+          : null,
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
@@ -326,7 +358,7 @@ class _SessionDetailScreenState extends ConsumerState<SessionDetailScreen> {
                       ),
                     )
                   : ListView.builder(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
                       itemCount: _messages!.length,
                       itemBuilder: (_, i) =>
                           _StoredBubble(message: _messages![i]),

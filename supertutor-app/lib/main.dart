@@ -8,11 +8,13 @@ import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'core/api_client.dart';
 import 'core/config.dart';
 import 'core/fcm_service.dart';
 import 'core/notifications.dart';
 import 'core/router.dart';
 import 'core/theme.dart';
+import 'core/version_check.dart';
 import 'features/onboarding/onboarding_screen.dart';
 import 'features/profile/settings_storage.dart';
 import 'widgets/warmup_overlay.dart';
@@ -69,15 +71,41 @@ Future<void> main() async {
   runApp(ProviderScope(child: SuperTutorApp(onboarded: onboarded)));
 }
 
-class SuperTutorApp extends ConsumerWidget {
+class SuperTutorApp extends ConsumerStatefulWidget {
   final bool onboarded;
   const SuperTutorApp({super.key, required this.onboarded});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SuperTutorApp> createState() => _SuperTutorAppState();
+}
+
+class _SuperTutorAppState extends ConsumerState<SuperTutorApp> {
+  bool _checkedVersion = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShowUpdate());
+  }
+
+  Future<void> _maybeShowUpdate() async {
+    if (_checkedVersion) return;
+    _checkedVersion = true;
+    try {
+      final dio = ref.read(dioProvider);
+      final result = await checkVersion(dio);
+      if (result == null) return;
+      final ctx = ref.read(routerProvider).routerDelegate.navigatorKey.currentContext;
+      if (ctx == null || !ctx.mounted) return;
+      await showUpdateDialog(ctx, result.info, force: result.mode == 'force');
+    } catch (_) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final router = ref.watch(routerProvider);
     final settings = ref.watch(settingsControllerProvider);
-    if (!onboarded) {
+    if (!widget.onboarded) {
       router.go('/onboarding');
     }
     return MaterialApp.router(

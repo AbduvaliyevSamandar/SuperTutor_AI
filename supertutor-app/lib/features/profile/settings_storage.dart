@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -13,6 +15,10 @@ class AppSettings {
   final String? cefrLevel;    // A1..C2
   final int dailyGoalMin;     // 5 | 10 | 20 | 30
 
+  /// Voice ID per language (e.g. {"en": "en-US-AriaNeural"}). When absent,
+  /// backend default is used.
+  final Map<String, String> voicePerLang;
+
   const AppSettings({
     this.notifications = true,
     this.uiLanguage = 'uz',
@@ -22,6 +28,7 @@ class AppSettings {
     this.learnGoal,
     this.cefrLevel,
     this.dailyGoalMin = 10,
+    this.voicePerLang = const {},
   });
 
   AppSettings copyWith({
@@ -33,6 +40,7 @@ class AppSettings {
     String? learnGoal,
     String? cefrLevel,
     int? dailyGoalMin,
+    Map<String, String>? voicePerLang,
   }) =>
       AppSettings(
         notifications: notifications ?? this.notifications,
@@ -43,7 +51,10 @@ class AppSettings {
         learnGoal: learnGoal ?? this.learnGoal,
         cefrLevel: cefrLevel ?? this.cefrLevel,
         dailyGoalMin: dailyGoalMin ?? this.dailyGoalMin,
+        voicePerLang: voicePerLang ?? this.voicePerLang,
       );
+
+  String? voiceFor(String lang) => voicePerLang[lang];
 }
 
 class SettingsController extends StateNotifier<AppSettings> {
@@ -59,9 +70,18 @@ class SettingsController extends StateNotifier<AppSettings> {
   static const _kLearnGoal = 'pref_learn_goal';
   static const _kCefrLevel = 'pref_cefr_level';
   static const _kDailyGoal = 'pref_daily_goal_min';
+  static const _kVoicePerLang = 'pref_voice_per_lang';
 
   Future<void> _load() async {
     final p = await SharedPreferences.getInstance();
+    Map<String, String> voices = const {};
+    final raw = p.getString(_kVoicePerLang);
+    if (raw != null && raw.isNotEmpty) {
+      try {
+        final m = jsonDecode(raw) as Map<String, dynamic>;
+        voices = m.map((k, v) => MapEntry(k, v.toString()));
+      } catch (_) {}
+    }
     state = AppSettings(
       notifications: p.getBool(_kNotif) ?? true,
       uiLanguage: p.getString(_kLang) ?? 'uz',
@@ -71,7 +91,16 @@ class SettingsController extends StateNotifier<AppSettings> {
       learnGoal: p.getString(_kLearnGoal),
       cefrLevel: p.getString(_kCefrLevel),
       dailyGoalMin: p.getInt(_kDailyGoal) ?? 10,
+      voicePerLang: voices,
     );
+  }
+
+  Future<void> setVoiceFor(String lang, String voiceId) async {
+    final next = Map<String, String>.from(state.voicePerLang);
+    next[lang] = voiceId;
+    state = state.copyWith(voicePerLang: next);
+    final p = await SharedPreferences.getInstance();
+    await p.setString(_kVoicePerLang, jsonEncode(next));
   }
 
   Future<void> setLearnProfile({

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 from app.schemas.chat import TTSRequest
-from app.services.tts_service import synthesize
+from app.services.tts_service import list_voices, synthesize
 
 router = APIRouter()
 
@@ -15,3 +15,8 @@ async def text_to_speech(req: TTSRequest):
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"TTS error: {e}") from e
     return Response(content=audio, media_type="audio/mpeg")
+
+
+@router.get("/tts/voices")
+def voices(language: str | None = None) -> dict:
+    return list_voices(language)

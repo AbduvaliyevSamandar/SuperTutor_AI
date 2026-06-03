@@ -30,12 +30,16 @@ class ChatScreen extends ConsumerStatefulWidget {
   final String? seedMessage;
   final String? scenarioRole;
   final String? scenarioGoal;
+  final String? resumeSessionId;
+  final List<ChatMessage>? resumeMessages;
   const ChatScreen({
     super.key,
     required this.subject,
     this.seedMessage,
     this.scenarioRole,
     this.scenarioGoal,
+    this.resumeSessionId,
+    this.resumeMessages,
   });
 
   @override
@@ -67,9 +71,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     // Fire-and-forget warmup so the first user message is fast
     ref.read(chatRepositoryProvider).warmup();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await _startSession();
       final ctrl =
           ref.read(chatControllerProvider(widget.subject).notifier);
+
+      // Resume from history? Preload messages and reuse the same session id.
+      final resumeMsgs = widget.resumeMessages;
+      if (widget.resumeSessionId != null && resumeMsgs != null) {
+        _sessionId = widget.resumeSessionId;
+        _sessionStart = DateTime.now();
+        _messagesCount = resumeMsgs.length;
+        ctrl.setSessionId(_sessionId);
+        ctrl.preloadMessages(resumeMsgs);
+      } else {
+        await _startSession();
+      }
+
       // Pass the learner's CEFR level so the AI tunes vocabulary difficulty
       final level = ref.read(settingsControllerProvider).cefrLevel;
       if (level != null && widget.subject != 'math') {
@@ -85,6 +101,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       if (seed != null && seed.trim().isNotEmpty) {
         _input.text = seed;
         await _onSend();
+      }
+      if (resumeMsgs != null && resumeMsgs.isNotEmpty) {
+        _scrollToBottom();
       }
     });
   }
@@ -183,9 +202,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       _speak(last.content);
       if (ref.read(authControllerProvider).isAuthenticated) {
         try {
-          await ref
+          final reachedNow = await ref
               .read(currencyControllerProvider.notifier)
               .awardXp(2, reason: 'chat');
+          if (reachedNow && mounted) {
+            _showDailyGoalReached();
+          }
         } catch (_) {}
       }
     }
@@ -198,6 +220,33 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         if (mounted) _showLessonCompleted();
       });
     }
+  }
+
+  void _showDailyGoalReached() {
+    SoundEffects.correct();
+    Haptics.success();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        backgroundColor: AppColors.primary,
+        duration: Duration(seconds: 3),
+        content: Row(
+          children: [
+            Text('🎯', style: TextStyle(fontSize: 24)),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Bugungi maqsad bajarildi! +5 💎',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _showLessonCompleted() async {
@@ -263,7 +312,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     try {
       setState(() => _speaking = true);
       final repo = ref.read(chatRepositoryProvider);
-      final audio = await repo.synthesize(text, language: _voiceLang);
+      final voice =
+          ref.read(settingsControllerProvider).voiceFor(_voiceLang);
+      final audio =
+          await repo.synthesize(text, language: _voiceLang, voice: voice);
       await _player.setAudioSource(_MemoryAudioSource(audio));
       await _player.play();
       _player.playerStateStream

@@ -58,6 +58,11 @@ class ChatController extends StateNotifier<ChatState> {
     level = l;
   }
 
+  /// Preloads past messages into the chat state (used for "Continue conversation").
+  void preloadMessages(List<ChatMessage> msgs) {
+    state = state.copyWith(messages: List.of(msgs), error: null);
+  }
+
   /// Cancels the currently streaming request (if any).
   void stop() {
     try {

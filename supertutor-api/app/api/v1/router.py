@@ -28,6 +28,7 @@ from app.api.v1.endpoints import (
     stt,
     teachback,
     tts,
+    version,
     vocab_personalized,
     vision,
     word_of_day,
@@ -36,6 +37,7 @@ from app.api.v1.endpoints import (
 
 api_router = APIRouter(prefix="/v1")
 api_router.include_router(health.router, tags=["health"])
+api_router.include_router(version.router, tags=["health"])
 api_router.include_router(auth.router, tags=["auth"])
 api_router.include_router(chat.router, tags=["chat"])
 api_router.include_router(vision.router, tags=["chat"])
